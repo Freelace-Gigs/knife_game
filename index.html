@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Knife Shot</title>
+    <meta charset="utf-8" />
+    <!-- Allow fullscreen mode on iOS devices. (These are Apple specific meta tags.) -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, minimal-ui"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <link rel="apple-touch-icon" sizes="256x256" href="img/icon.png" />
+    <meta name="HandheldFriendly" content="true" />
+
+    <!-- Chrome for Android web app tags -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <link rel="shortcut icon" sizes="256x256" href="img/icon.png" />
+    <style type="text/css">
+      * {
+        padding: 0;
+        margin: 0;
+      }
+      html,
+      body {
+        overflow: hidden;
+        touch-action: none;
+        -ms-touch-action: none;
+      }
+      body {
+        background-image: url("img/cover.png");
+        background-size: inherit;
+        background-color: #000000;
+      }
+      canvas {
+        touch-action-delay: none;
+        touch-action: none;
+        -ms-touch-action: none;
+      }
+      @font-face {
+        font-family: "vanilla";
+        font-style: normal;
+        font-weight: 400;
+        src: url(font/vanilla-extract.ttf) format("truetype");
+      }
+    </style>
+    <script type="text/javascript" src="scripts/phaser.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script type="text/javascript" src="scripts/jquery-3.2.1.min.js"></script>
+    <script type="text/javascript" src="scripts/global.js"></script>
+    <script type="text/javascript" src="scripts/lib.js"></script>
+    <script type="text/javascript" src="scripts/boot.js"></script>
+    <script type="text/javascript" src="scripts/preload.js"></script>
+    <style>
+      .waiting-message,
+      .game-finished-message,
+      .game-disconnected,
+      .game-end-lose,
+      .game-end-win,
+      .game-other-player {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 24px;
+        color: #fff;
+        background: rgb(0, 0, 0);
+        padding: 20px;
+        border-radius: 10px;
+        display: none; /* Hidden by default */
+        z-index: 100;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="waiting-message" id="waitingMessage">
+      Waiting for all players to connect...
+    </div>
+
+    <div class="game-finished-message" id="gameFinishedMessage">
+      Game Finished...
+    </div>
+
+    <div class="game-end-lose" id="gameEndLose">You Lose</div>
+
+    <div class="game-other-player" id="gameplayOtherPlayer">
+      Gameplay Other Player
+    </div>
+
+    <div class="game-end-win" id="gameEndWin">You Win</div>
+
+    <div class="game-disconnected" id="gameDisconnectMessage">
+      Game finished. Only one player left in the game.
+    </div>
+    <div
+      style="
+        font-family: vanilla;
+        position: absolute;
+        left: -1000px;
+        visibility: hidden;
+      "
+    >
+      .
+    </div>
+    <div id="game_content"></div>
+    <script>
+      $(document).ready(function () {
+        function getQueryParams() {
+          const params = new URLSearchParams(window.location.search);
+          return {
+            roomID: params.get("roomID"),
+            playerID: params.get("playerID"),
+            playerName: params.get("playerName"),
+            numOfPlayers: parseInt(params.get("numOfPlayers")) || null,
+            isHost: params.get("isHost") === "true",
+          };
+        }
+        const { roomID, playerID, isHost, numOfPlayers, playerName } =
+          getQueryParams();
+        ROOM_ID = roomID;
+        PLAYER_ID = playerID;
+        // PLAYER_NAME = playerName;
+        // NUM_OF_PLAYERS = numOfPlayers;
+        IS_HOST = isHost;
+      
+        window.socket = io();
+
+        function loadScripts(scripts) {
+          scripts.forEach((scriptSrc) => {
+            const script = document.createElement("script");
+            script.src = scriptSrc;
+            script.type = "text/javascript";
+            document.body.appendChild(script);
+          });
+        }
+        $("#waitingMessage").show();
+        socket.on("connect", () => {
+          socket.emit("joinRoom", {
+            roomID,
+            playerID,
+            playerName,
+            numOfPlayers,
+            isHost,
+          });
+        });
+
+        socket.on("showGameOtherPlayer", (data) => {
+          if (data.playerID === PLAYER_ID) {
+            SHOW_GAMEPLAY = false;
+          } else {
+            START_EMITTING = true;
+          }
+        });
+
+        socket.on("bothGameEnd", (data) => {
+          let currentPlayer;
+          let currentPlayerScore;
+          let otherPlayer;
+          let otherPlayerScore;
+          if (data.player1 === PLAYER_ID) {
+            currentPlayerScore = data.player1Score;
+            otherPlayerScore = data.player2Score;
+          } else {
+            currentPlayerScore = data.player2Score;
+            otherPlayerScore = data.player1Score;
+          }
+          if (currentPlayerScore > otherPlayerScore) {
+            $("#gameEndWin").show();
+            socket.emit("gameFinished", {
+              roomID: ROOM_ID,
+              playerID: PLAYER_ID,
+            });
+            CAN_PLAY = false;
+          } else {
+            $("#gameEndLose").show();
+            CAN_PLAY = false;
+          }
+        });
+
+        socket.on("gameStarted", (data) => {
+          alert(data.message);
+        });
+
+        socket.on("botPlayFinish", (data) => {
+          CAN_PLAY = false
+          $("#gameEndLose").show();
+        });
+
+        socket.on("playerWin", (data) => {
+          $("#gameEndWin").show();
+            socket.emit("gameFinished", {
+              roomID: ROOM_ID,
+              playerID: PLAYER_ID,
+            });
+            CAN_PLAY = false;
+        });
+
+        socket.on("joinRoomError", (data) => {
+          alert(data.message);
+        });
+
+        socket.on("startGame", (data) => {
+          if(data && data?.botPlay){
+            BOT_PLAY = true
+          }
+          $("#waitingMessage").hide();
+          loadScripts(["scripts/menu.js", "scripts/game.js"]);
+        });
+      });
+      window.addEventListener("beforeunload", (event) => {
+          socket.emit("playerDisconnectData");
+        });
+    </script>
+  </body>
+</html>
