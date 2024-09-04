@@ -244,7 +244,7 @@ io.on('connection', (socket) => {
         // const sign = 'EvzuKF61x9oKOQwh9xrmEmyFIulPNh';
 
         // const mydata = {
-        //     gameUrl: 'chess',
+        //     gameUrl: 'knife',
         //     method: 'win',
         //     roomID: roomID,
         //     winnerID: playerID,
