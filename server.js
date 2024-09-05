@@ -80,7 +80,7 @@ io.on('connection', (socket) => {
                             await room.save();
                             io.in(roomID).emit('startGame', {botPlay : true});
                         }
-                    }, 10000); // 10 seconds timeout
+                    }, 30000); // 10 seconds timeout
                 } else {
 
                     const hostPlayer = room.players.find(p => p.playerID === playerID);
@@ -159,6 +159,7 @@ io.on('connection', (socket) => {
             let playerToUpdate = room.players.find(player => player.playerID === playerID);
             if (playerToUpdate) {
                 playerToUpdate.score = score;
+                io.in(roomID).emit("realTimeScore", {playerID : playerID, score : score})
                 await room.save();
             } else {
                 socket.emit('error', { message: 'Player not found.' });

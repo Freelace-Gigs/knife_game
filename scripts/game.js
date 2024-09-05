@@ -14,6 +14,7 @@ class Game extends Phaser.Scene {
 		this.scoreText = null;
 		this.firstStringKnife = null;
 		this.firstPickTarget = null;
+		this.OpponentScoreText = null
 	}
 
 	initSocketListeners() {
@@ -59,8 +60,17 @@ class Game extends Phaser.Scene {
 
 	create() {
 
+		
+
+		window.socket.on('realTimeScore', (data) => {
+			if(data.playerID != PLAYER_ID){
+				this.OpponentScoreText.text = data.score
+			}
+
+		});
+
 		window.socket.on("scoreUpdate", (data) => {
-			this.scoreText.text = data.score
+			this.OpponentScoreText.text = data.score
 		})
 
 		window.socket.on("runningUpdate", (data) => {
@@ -167,6 +177,7 @@ class Game extends Phaser.Scene {
 		let targetKnives = defaultTargetKnives;
 		let currentLevel = 0;
 		let score = 0;
+		let opponentScore = 0;
 
 		this.isGameover = false;
 		this.state = 'wait';
@@ -228,9 +239,16 @@ class Game extends Phaser.Scene {
 		});
 
 		//ui score
-		this.add.sprite(50, 50, 'icon_score');
-		this.scoreText = this.add.text(100, 20, score, { fontSize: 40, align: 'left', fontFamily: 'vanilla' });
-
+		// this.add.sprite(50, 50, 'icon_score');
+		this.add.text(40, 20, "Game Score", { fontSize: 24, align: 'left', fontFamily: 'vanilla' });
+		if(this.scoreText == null){
+			this.scoreText = this.add.text(100, 50, score, { fontSize: 40, align: 'left', fontFamily: 'vanilla' });
+		} else {
+			this.scoreText = this.add.text(100, 50, this.scoreText.text, { fontSize: 40, align: 'left', fontFamily: 'vanilla' });
+		}
+		
+		this.add.text(480, 20, "Opponent Score", { fontSize: 24, align: 'left', fontFamily: 'vanilla' });
+		this.OpponentScoreText = this.add.text(580, 50, opponentScore, { fontSize: 40, align: 'left', fontFamily: 'vanilla' });
 		//for testing best rotation theme
 		//this.add.text(config.width * 0.5, 600, random, { fontSize: 50, align: 'center', fontFamily: 'vanilla' }).setOrigin(0.5);
 
@@ -697,6 +715,14 @@ class Game extends Phaser.Scene {
 				}
 			}
 		}
+		if(BOT_PLAY){
+			this.time.addEvent({
+				delay: 1000, // 1000 ms = 1 second
+				callback: this.generateRandomNumber,
+				callbackScope: this,
+				loop: true // Repeat the event indefinitely
+			});
+		}
 	}
 	emitGameState() {
 		const gameState = {
@@ -723,7 +749,7 @@ class Game extends Phaser.Scene {
 		if (SHOW_GAMEPLAY) {
 			this.target.rotation = state.targetRotation;
 			this.currentLevel = state.currentLevel;
-			this.scoreText.text = state.score;
+			this.OpponentScoreText.text = state.score;
 
 			// Sync stuck knives
 			this.stuckKnives.clear(true, true);
@@ -751,6 +777,16 @@ class Game extends Phaser.Scene {
 		}
 
 	}
+
+	generateRandomNumber() {
+        // Generate a random number between 2 and 5
+        const randomNumber = Phaser.Math.Between(1, 5);
+		if(this.OpponentScoreText){
+			this.OpponentScoreText.text = randomNumber + Number(this.OpponentScoreText.text)
+		}
+		
+       
+    }
 }
 var config = {
 	type: Phaser.AUTO,
