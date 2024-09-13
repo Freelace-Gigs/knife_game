@@ -149,12 +149,12 @@
         });
 
         socket.on("startGameWithEmit", (data) => {
-          console.log(data);
+       
           if (data.emittingPlayer === playerID) {
-            console.log("emitting");
+           
             START_EMITTING = true;
           } else if (data.inGame == playerID) {
-            console.log("getting");
+          
             SHOW_GAMEPLAY = true;
             CAN_PLAY = false;
             $("#waitingMessage").hide();
