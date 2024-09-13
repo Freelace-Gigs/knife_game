@@ -415,7 +415,7 @@ class Game extends Phaser.Scene {
 							// // bgTexture = Phaser.Math.RND.pick(['bg_cloud', 'bg_rock', 'bg_sky', 'bg_wood']);
 
 							// self.scene.restart();
-							window.open(`http://localhost:5000/?roomID=${ROOM_ID}&emit=true&playerID=${PLAYER_ID}-temp`, "_blank")
+							window.open(`${LINK}/?roomID=${ROOM_ID}&emit=true&playerID=${PLAYER_ID}-temp`, "_blank")
 						}
 					}
 				})
