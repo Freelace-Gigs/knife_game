@@ -9,6 +9,7 @@ var SHOW_GAMEPLAY = false
 var CAN_PLAY = true
 var START_EMITTING = false
 var BOT_PLAY = false
+var ignoreNextGlobalInput = false
 
 // loadData();
 // function loadData() {

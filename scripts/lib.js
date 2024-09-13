@@ -124,6 +124,9 @@ function createButton(x, y, buttonType, scope) {
 		buttonType = 'music';
 	}
 	o.name = buttonType;
+	o.on('pointerdown', function (pointer) {
+		ignoreNextGlobalInput = true;
+	  });
 	return o;
 }
 function getData(key) {

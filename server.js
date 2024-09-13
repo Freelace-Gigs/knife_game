@@ -29,12 +29,12 @@ const roomSchema = new mongoose.Schema({
         connected: { type: Boolean, default: true },
         score: { type: Number, default: 0 },
         isHost: { type: String, default: false },
-        gameEnd : {type : Boolean, default : false}
+        gameEnd: { type: Boolean, default: false }
     }],
     gameStarted: { type: Boolean, default: false },
     startTime: String,
     createdAt: { type: Date, default: Date.now },
-    botPlay : {type : Boolean, default: false}
+    botPlay: { type: Boolean, default: false }
 });
 
 let gameStatePlayer1 = {
@@ -43,100 +43,126 @@ let gameStatePlayer1 = {
     bonusInGame: [],
     currentLevel: 0,
     score: 0,
-  };
+};
 
 const Room = mongoose.model('Room', roomSchema);
 
 io.on('connection', (socket) => {
 
-    socket.on('joinRoom', async ({ roomID, playerID, isHost }) => {
-        try {
+    socket.on('joinRoom', async ({ roomID, playerID, isHost, emit }) => {
+      
+        if (emit) {
             let room = await Room.findOne({ roomID });
+            const originalPlayerID = playerID.split("-")[0]
 
-            if (isHost) {
-                if (!room) {
-                    room = new Room({
-                        roomID,
-                        players: [{
-                            playerID,
-                            socketID: socket.id,
-                            connected: true,
-                            isHost: true,
-                            score: 0,
-                            gameEnd : false
-                        }],
-                        gameStarted: false
-                    });
-                    await room.save();
-                    socket.join(roomID);
+            let myPlayerObject = null;
+            let otherPlayerObject = null;
 
-                    setTimeout(async () => {
-                        room = await Room.findOne({ roomID }); // Refresh the room data
-                        const playersCount = room.players.filter(p => p.connected).length;
-                        if (playersCount === 1 && !room.gameStarted) { // Only host is connected
-                            room.gameStarted = true;
-                            room.botPlay = true;
-                            room.startTime = new Date().getTime();
-                            await room.save();
-                            io.in(roomID).emit('startGame', {botPlay : true});
-                        }
-                    }, 30000); // 10 seconds timeout
+            for (const player of room.players) {
+                if (player.playerID === originalPlayerID) {
+                    myPlayerObject = { playerID: player.playerID };
                 } else {
-
-                    const hostPlayer = room.players.find(p => p.playerID === playerID);
-                    if (hostPlayer) {
-                        if (room.gameStarted) {
-                            socket.emit('gameStarted', { message: 'Game has already started. You cannot join the room.' });
-                        } else {
-                            hostPlayer.connected = true;
-                            hostPlayer.socketID = socket.id;
-                            room.startTime = new Date().getTime();
-                            await room.save();
-                            socket.join(roomID);
-                        }
-                    } else {
-                        socket.emit('joinRoomError', { message: 'Host player not found in the room.' });
-                        return;
-                    }
+                    otherPlayerObject = { playerID: player.playerID };
                 }
-            } else {
-                setTimeout(async () => {
-                    room = await Room.findOne({ roomID });
+            }
+         
+            socket.join(roomID);
+            io.in(roomID).emit('startGameWithEmit',
+                {
+                    emittingPlayer: otherPlayerObject.playerID,
+                    inGame: playerID
+                }
+            );
+        } else {
+            try {
+                let room = await Room.findOne({ roomID });
+
+                if (isHost) {
                     if (!room) {
-                        socket.emit('joinRoomError', { message: 'Room not found' });
-                    } else if (room.gameStarted) {
-                        socket.emit('gameStarted', { message: 'Game has already started. You cannot join the room.' });
-                    } else {
-                        const existingPlayer = room.players.find(p => p.playerID === playerID);
-                        if (existingPlayer) {
-                            existingPlayer.connected = true;
-                            existingPlayer.socketID = socket.id;
-                        } else {
-                            room.players.push({  playerID,
+                        room = new Room({
+                            roomID,
+                            players: [{
+                                playerID,
                                 socketID: socket.id,
                                 connected: true,
-                                isHost: false,
+                                isHost: true,
                                 score: 0,
-                                gameEnd : false 
-                            });
-                        }
+                                gameEnd: false
+                            }],
+                            gameStarted: false
+                        });
                         await room.save();
                         socket.join(roomID);
-                        const playersCount = room.players.filter(p => p.connected).length;
-                        io.in(roomID).emit('waiting', { playersCount });
 
-                        if (playersCount === 2) {
-                            room.gameStarted = true;
-                            room.startTime = new Date().getTime();
-                            await room.save();
-                            io.in(roomID).emit('startGame');
+                        // setTimeout(async () => {
+                        //     room = await Room.findOne({ roomID }); // Refresh the room data
+                        //     const playersCount = room.players.filter(p => p.connected).length;
+                        //     if (playersCount === 1 && !room.gameStarted) { // Only host is connected
+                        //         room.gameStarted = true;
+                        //         room.botPlay = true;
+                        //         room.startTime = new Date().getTime();
+                        //         await room.save();
+                        //         io.in(roomID).emit('startGame', { botPlay: true, });
+                        //     }
+                        // }, 30000); 
+                    } else {
+
+                        const hostPlayer = room.players.find(p => p.playerID === playerID);
+                        if (hostPlayer) {
+                            if (room.gameStarted) {
+                                socket.emit('gameStarted', { message: 'Game has already started. You cannot join the room.' });
+                            } else {
+                                hostPlayer.connected = true;
+                                hostPlayer.socketID = socket.id;
+                                room.startTime = new Date().getTime();
+                                await room.save();
+                                socket.join(roomID);
+                            }
+                        } else {
+                            socket.emit('joinRoomError', { message: 'Host player not found in the room.' });
+                            return;
                         }
                     }
-                }, 5000);
+                } else {
+                    setTimeout(async () => {
+                        room = await Room.findOne({ roomID });
+                        if (!room) {
+                            socket.emit('joinRoomError', { message: 'Room not found' });
+                        } else if (room.gameStarted) {
+                            socket.emit('gameStarted', { message: 'Game has already started. You cannot join the room.' });
+                        } else {
+                            const existingPlayer = room.players.find(p => p.playerID === playerID);
+                            if (existingPlayer) {
+                                existingPlayer.connected = true;
+                                existingPlayer.socketID = socket.id;
+                            } else {
+                                room.players.push({
+                                    playerID,
+                                    socketID: socket.id,
+                                    connected: true,
+                                    isHost: false,
+                                    score: 0,
+                                    gameEnd: false
+                                });
+                            }
+                            await room.save();
+                            socket.join(roomID);
+                            const playersCount = room.players.filter(p => p.connected).length;
+                            io.in(roomID).emit('waiting', { playersCount });
+
+                            if (playersCount === 2) {
+                                room.gameStarted = true;
+                                room.startTime = new Date().getTime();
+                                await room.save();
+                                io.in(roomID).emit('startGame');
+                            }
+                        }
+                    }, 5000);
+                }
+            } catch (error) {
+                console.error('Error joining room:', error);
+                socket.emit('joinRoomError', { message: 'Error joining room. Please try again.' });
             }
-        } catch (error) {
-            console.error('Error joining room:', error);
-            socket.emit('joinRoomError', { message: 'Error joining room. Please try again.' });
         }
     });
 
@@ -159,7 +185,7 @@ io.on('connection', (socket) => {
             let playerToUpdate = room.players.find(player => player.playerID === playerID);
             if (playerToUpdate) {
                 playerToUpdate.score = score;
-                io.in(roomID).emit("realTimeScore", {playerID : playerID, score : score})
+                io.in(roomID).emit("realTimeScore", { playerID: playerID, score: score })
                 await room.save();
             } else {
                 socket.emit('error', { message: 'Player not found.' });
@@ -183,20 +209,20 @@ io.on('connection', (socket) => {
             if (playerToUpdate) {
                 playerToUpdate.gameEnd = true;
                 await room.save();
-                if(otherPlayer.gameEnd){
+                if (otherPlayer.gameEnd) {
                     let data = {
-                        player1 : playerToUpdate.playerID,
-                        player1Score : playerToUpdate.score,
-                        player2 : otherPlayer.playerID,
-                        player2Score : otherPlayer.score
+                        player1: playerToUpdate.playerID,
+                        player1Score: playerToUpdate.score,
+                        player2: otherPlayer.playerID,
+                        player2Score: otherPlayer.score
                     }
                     io.in(roomID).emit('bothGameEnd', data);
 
                 } else {
                     let data = {
-                        playerID : playerToUpdate.playerID,
+                        playerID: playerToUpdate.playerID,
                     }
-                    io.in(roomID).emit('showGameOtherPlayer', data);
+                    // io.in(roomID).emit('showGameOtherPlayer', data);
                 }
             } else {
                 io.in(roomID).emit('error', { message: 'Player not found.' });
@@ -210,32 +236,47 @@ io.on('connection', (socket) => {
     socket.on('updateState', (updatedState) => {
         gameStatePlayer1 = { ...gameStatePlayer1, ...updatedState };
         io.in(updatedState.roomID).emit('syncState', gameStatePlayer1);
-      });
+    });
 
 
-      socket.on('newLevel', (data) => {
-   
+    socket.on('newLevel', (data) => {
+
         io.in(data.roomID).emit('newLevel', data);
-      });
+    });
 
-      socket.on('scoreUpdate', (data) => {
-   
+    socket.on('scoreUpdate', (data) => {
+
         io.in(data.roomID).emit('scoreUpdate', data);
-      });
+    });
 
 
-      socket.on('runningUpdate', (data) => {
-   
+    socket.on('runningUpdate', (data) => {
+
         io.in(data.roomID).emit('runningUpdate', data);
-      });
+    });
 
-      socket.on('botPlayFinish', (data) => {
-   
+    socket.on('botPlayFinish', (data) => {
+
         io.in(data.roomID).emit('botPlayFinish');
-      });
+    });
 
-      socket.on("gameFinished", async (data) => {
-        console.log(data)
+    socket.on('throw', (data) => {
+
+        io.in(data.roomID).emit('throw');
+    });
+
+    socket.on('emitGameEnd', (data) => {
+
+        io.in(data.roomID).emit('emitGameEnd');
+    });
+
+    socket.on('knifeCollision', (data) => {
+
+        io.in(data.roomID).emit('knifeCollision');
+    });
+
+    socket.on("gameFinished", async (data) => {
+        // console.log(data)
         // const roomID = data.roomID;
         // const playerID = data.playerID;
         // const room = await Room.findOne({ roomID });

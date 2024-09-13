@@ -114,16 +114,17 @@
             playerName: params.get("playerName"),
             numOfPlayers: parseInt(params.get("numOfPlayers")) || null,
             isHost: params.get("isHost") === "true",
+            emit: params.get("emit") === "true",
           };
         }
-        const { roomID, playerID, isHost, numOfPlayers, playerName } =
+        const { roomID, playerID, isHost, numOfPlayers, playerName, emit } =
           getQueryParams();
         ROOM_ID = roomID;
         PLAYER_ID = playerID;
         // PLAYER_NAME = playerName;
         // NUM_OF_PLAYERS = numOfPlayers;
         IS_HOST = isHost;
-      
+
         window.socket = io();
 
         function loadScripts(scripts) {
@@ -142,7 +143,22 @@
             playerName,
             numOfPlayers,
             isHost,
+            emit,
           });
+        });
+
+        socket.on("startGameWithEmit", (data) => {
+          console.log(data);
+          if (data.emittingPlayer === playerID) {
+            console.log("emitting")
+            START_EMITTING = true;
+          } else if (data.inGame == playerID) {
+            console.log("getting")
+            SHOW_GAMEPLAY = true;
+            CAN_PLAY = false
+            $("#waitingMessage").hide();
+            loadScripts(["scripts/menu.js", "scripts/game.js"]);
+          }
         });
 
         socket.on("showGameOtherPlayer", (data) => {
@@ -183,17 +199,17 @@
         });
 
         socket.on("botPlayFinish", (data) => {
-          CAN_PLAY = false
+          CAN_PLAY = false;
           $("#gameEndLose").show();
         });
 
         socket.on("playerWin", (data) => {
           $("#gameEndWin").show();
-            socket.emit("gameFinished", {
-              roomID: ROOM_ID,
-              playerID: PLAYER_ID,
-            });
-            CAN_PLAY = false;
+          socket.emit("gameFinished", {
+            roomID: ROOM_ID,
+            playerID: PLAYER_ID,
+          });
+          CAN_PLAY = false;
         });
 
         socket.on("joinRoomError", (data) => {
@@ -201,16 +217,18 @@
         });
 
         socket.on("startGame", (data) => {
-          if(data && data?.botPlay){
-            BOT_PLAY = true
-          }
           $("#waitingMessage").hide();
-          loadScripts(["scripts/menu.js", "scripts/game.js"]);
+          loadScripts(["scripts/menu.js"]);
+          if (PLAYER_ID.startsWith('b')) {
+            loadScripts(["scripts/gameai.js"]);
+          } else {
+            loadScripts(["scripts/game.js"]);
+          }
         });
       });
       window.addEventListener("beforeunload", (event) => {
-          socket.emit("playerDisconnectData");
-        });
+        socket.emit("playerDisconnectData");
+      });
     </script>
   </body>
 </html>

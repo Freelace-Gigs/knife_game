@@ -9,37 +9,35 @@ class Game extends Phaser.Scene {
 		this.isGameover = false;
 		this.targetBreak = false;
 		this.rotBefore = 0;
-		this.first = true
-		this.initSocketListeners();
+		this.botActive = true;
+		this.lastThrowTime = 0;
+		this.targetKnives = 0;
+		this.bgKnives = null;
+		this.knives = null
+		this.rotationDuration = 2000
+		this.nextThrowDelay = 0
+		this.debugGraphics = null
+		this.radianOnTarget = null
 		this.scoreText = null;
 		this.firstStringKnife = null;
 		this.firstPickTarget = null;
 		this.OpponentScoreText = null
-
-	}
-
-	initSocketListeners() {
-
-		window.socket.on('syncState', (state) => {
-			if (SHOW_GAMEPLAY) {
-				this.syncGameState(state);
-			}
-
-		});
 	}
 
 	update() {
-
 		if (this.isGameover || this.targetBreak) return;
 		let rot = this.target.rotation - this.rotBefore;
 		this.rotBefore = this.target.rotation;
+
 		if (this.stuckKnives != null) {
-			Phaser.Actions.RotateAroundDistance(this.stuckKnives.getChildren(), { x: config.width / 2, y: 300 }, rot, this.targetDiameter / 2);
+			Phaser.Actions.RotateAroundDistance(this.stuckKnives.getChildren(), { x: this.target.x, y: this.target.y }, rot, this.targetDiameter / 2);
 			let children = this.stuckKnives.getChildren();
 			for (let knife of children) {
 				let rotation = Phaser.Math.Angle.Between(knife.x, knife.y, this.target.x, this.target.y) + (Math.PI * 0.5);
 				knife.rotation = rotation;
+				// console.log(knife.x, knife.y)
 			}
+
 		}
 
 		if (this.bonusInGame.getLength() > 0) {
@@ -50,51 +48,18 @@ class Game extends Phaser.Scene {
 				bonus.rotation = rotation;
 			}
 		}
+		if (this.botActive) {
+			this.botPlay();
+		}
+
 		if (START_EMITTING) {
 			this.emitGameState();
 			window.socket.emit("runningUpdate", { roomID: ROOM_ID, pickTarget: this.firstPickTarget, stringKnife: this.firstStringKnife })
 		}
 
-
 	}
 
 	create() {
-
-
-
-		window.socket.on('realTimeScore', (data) => {
-			if (data.playerID != PLAYER_ID) {
-				this.OpponentScoreText.text = data.score
-			}
-
-		});
-
-		window.socket.on('emitGameEnd', (data) => {
-			if (SHOW_GAMEPLAY) {
-				self.isGameover = true;
-				knife.setVisible(false);
-				self.time.delayedCall(500, gameOver);
-			}
-
-
-		});
-
-		window.socket.on('knifeCollision', (data) => {
-			if (SHOW_GAMEPLAY) {
-				stuckKnifeCollision()
-			}
-
-		});
-
-		window.socket.on('throw', (data) => {
-			// isKnifeFlying = true;
-			if (SHOW_GAMEPLAY) {
-				knife.setVelocityY(-2200);
-			}
-
-
-		});
-
 
 		window.socket.on("scoreUpdate", (data) => {
 			if(START_EMITTING){
@@ -117,7 +82,7 @@ class Game extends Phaser.Scene {
 							ease: 'Sine.easeIn'
 						})
 					}
-					knife.y = -1000;
+					this.knife.y = -1000;
 	
 					self.time.addEvent({
 						delay: 1500,
@@ -135,161 +100,30 @@ class Game extends Phaser.Scene {
 	
 				}
 			}
-			if (SHOW_GAMEPLAY) {
-				this.scoreText.text = data.score
-				targetKnives = data.targetKnives
-				if (data.targetKnives <= 0) {
-					targetTween.stop();
-					self.targetBreak = true;
-					self.target.setScale(0);
-					breakTarget(randompickTarget, 720, 600, 0);
-					breakTarget(randompickTarget, 0, 600, 90);
-					breakTarget(randompickTarget, 0, 20, 180);
-					breakTarget(randompickTarget, 720, 20, 270);
-					self.physics.world.gravity = { x: 0, y: 300 };
-					for (let sKnife of self.stuckKnives.getChildren()) {
-						sKnife.body.velocity.y = 100 + Math.random() * 300;
-						self.tweens.add({
-							targets: sKnife,
-							angle: (Math.random() >= 0.5) ? 360 : -360,
-							duration: Phaser.Math.Between(2000, 4000),
-							repeat: -1,
-							ease: 'Sine.easeIn'
-						})
-					}
-					knife.y = -1000;
-	
-					self.time.addEvent({
-						delay: 1500,
-						callback: () => {
-							if (currentLevel % 2 == 0 && currentLevel > 0) {
-								showBossMode();
-							}
-							else {
-								recreateLevel();
-								isBoss = false;
-								//bossMode()
-							}
-						}
-					})
-	
-				}
-			}
+		
 
 		})
-
-		window.socket.on("runningUpdate", (data) => {
-			if (SHOW_GAMEPLAY) {
-				if (self.firstPickTarget != data.pickTarget) {
-					self.firstPickTarget = data.pickTarget
-					self.target.setTexture(spriteKey(data.pickTarget));
-				}
-				if (self.firstStringKnife != data.stringKnife) {
-					self.firstStringKnife = data.stringKnife
-					knife.setTexture(spriteKey(data.stringKnife));
-				}
-
-
-			}
-
-		})
-
-		window.socket.on("newLevel", (data) => {
-			if (SHOW_GAMEPLAY) {
-				self.tweens.killAll();
-				// isKnifeFlying = true;
-				// knife.setVelocityY(-2200);
-				self.target.setTexture(spriteKey(data.pickTarget));
-				self.target.setScale(1);
-				knife.y = 940;
-				knife.setTexture(spriteKey(data.stringKnife));
-				let defaultTimeDuration = 2000; //1800 //1300
-				let rotationDuration = 0;
-				if (data.pickTween == 'Sine') {
-					rotationDuration = defaultTimeDuration;
-					targetRotation.push(Math.PI * 2.25);
-					targetRotation.push(-Math.PI * 2.5);
-				} else {
-					rotationDuration = data.rotationDuration;
-					targetRotation.push(Math.PI * 2);
-				}
-				targetTween = self.tweens.add({
-					targets: self.target,
-					rotation: targetRotation[0],
-					duration: rotationDuration,
-					//yoyo: true,
-					//repeat: -1,
-					onComplete: () => {
-						retweenTarget(data.pickTween, rotationDuration, targetRotation[0], targetRotation);
-					},
-					ease: data.pickTween//random
-				});
-
-
-				self.stuckKnives.clear(true, true);
-				self.bonusInGame.clear(true, true);
-				self.physics.world.gravity = { x: 0, y: 0 };
-			}
-
-		})
-
-		// window.socket.on("next", () => {
-		// 	targetTween.stop();
-		// 	self.targetBreak = true;
-		// 	self.target.setScale(0);
-		// 	breakTarget(randompickTarget, 720, 600, 0);
-		// 	breakTarget(randompickTarget, 0, 600, 90);
-		// 	breakTarget(randompickTarget, 0, 20, 180);
-		// 	breakTarget(randompickTarget, 720, 20, 270);
-		// 	self.physics.world.gravity = { x: 0, y: 300 };
-		// 	for (let sKnife of self.stuckKnives.getChildren()) {
-		// 		sKnife.body.velocity.y = 100 + Math.random() * 300;
-		// 		self.tweens.add({
-		// 			targets: sKnife,
-		// 			angle: (Math.random() >= 0.5) ? 360 : -360,
-		// 			duration: Phaser.Math.Between(2000, 4000),
-		// 			repeat: -1,
-		// 			ease: 'Sine.easeIn'
-		// 		})
-		// 	}
-		// 	knife.y = -1000;
-
-		// 	self.time.addEvent({
-		// 		delay: 1500,
-		// 		callback: () => {
-		// 			if (currentLevel % 2 == 0 && currentLevel > 0) {
-		// 				showBossMode();
-		// 			}
-		// 			else {
-		// 				recreateLevel();
-		// 				isBoss = false;
-		// 			}
-		// 		}
-		// 	})
-
-		// })
-
 
 		playSound('target_shown', this);
 		const self = this;
-		let isKnifeFlying = false;
+		// let isKnifeFlying = false;
+		this.isKnifeFlying = false;
 		const minSpeed = 0.007;
 		const maxSpeed = 0.01;
 		this.add.sprite(0, 0, spriteKey(bgTexture)).setOrigin(0);
 		if (firstLoad) firstLoad = false;
 
 		let defaultTargetKnives = 5;
-		let targetKnives = defaultTargetKnives;
+		this.targetKnives = defaultTargetKnives;
 		let currentLevel = 0;
 		let score = 0;
-		let opponentScore = 0;
 
 		this.isGameover = false;
 		this.state = 'wait';
 		let isBoss = false;
 
-		let bgKnives = this.add.group();
-		let knives = this.add.group();
+		this.bgKnives = this.add.group();
+		this.knives = this.add.group();
 		this.stuckKnives = this.physics.add.group();
 		this.bonusInGame = this.physics.add.group();
 		let randompickTarget = Phaser.Math.RND.pick(['target_1', 'target_2', 'target_3', 'target_5', 'target_6']);//remove target_4, for make as boss
@@ -301,16 +135,7 @@ class Game extends Phaser.Scene {
 		this.target.setScale(0);
 		this.target.setCircle(this.targetDiameter / 2);
 		this.target.body.allowGravity = false;
-		//'Quad.easeIn'
-		//let random = Phaser.Math.RND.pick(['Sine', 'Sine.easeIn', 'Sine.easeOut', 'Sine.easeInOut', 'Quad', 'Cubic', 'Linear', 'Quart']);
-		// let targetTween = this.tweens.add({
-		// 	targets: this.target,
-		// 	rotation: Math.PI * 2.5,
-		// 	duration: 4000,
-		// 	yoyo: true,
-		// 	repeat: -1,
-		// 	ease: random
-		// });
+
 		let targetTween = null;
 		let targetRotation = [];
 
@@ -346,54 +171,23 @@ class Game extends Phaser.Scene {
 		//ui score
 		// this.add.sprite(50, 50, 'icon_score');
 		this.add.text(40, 20, "Game Score", { fontSize: 24, align: 'left', fontFamily: 'vanilla' });
-		
 		if (this.scoreText == null) {
 			this.scoreText = this.add.text(100, 50, score, { fontSize: 40, align: 'left', fontFamily: 'vanilla' });
 		} else {
 			this.scoreText = this.add.text(100, 50, this.scoreText.text, { fontSize: 40, align: 'left', fontFamily: 'vanilla' });
 		}
-		if(!SHOW_GAMEPLAY){
-			this.add.text(480, 20, "Opponent Score", { fontSize: 24, align: 'left', fontFamily: 'vanilla' });
-		this.OpponentScoreText = this.add.text(580, 50, opponentScore, { fontSize: 40, align: 'left', fontFamily: 'vanilla' });
-		}
-		
-
-		if (!SHOW_GAMEPLAY) {
-			createButton(580, 1000, 'restart', self)
-		}
-
-		//for testing best rotation theme
-		//this.add.text(config.width * 0.5, 600, random, { fontSize: 50, align: 'center', fontFamily: 'vanilla' }).setOrigin(0.5);
 
 
-		let knife = self.physics.add.sprite(config.width / 2, 940, spriteKey(stringKnifeTexture));
-
-		knife.body.setSize(30, 30);
-		knife.body.allowGravity = false;
-
-		this.physics.add.overlap(knife, this.target, knifeCollision, null, this);
-
-		if (!SHOW_GAMEPLAY) {
-			this.physics.add.overlap(knife, this.stuckKnives, stuckKnifeCollision, null, this);
-		}
-		this.physics.add.overlap(knife, this.bonusInGame, bonusCollision, null, this);
-		if(!SHOW_GAMEPLAY){
-			this.input.on('pointerdown', function (pointer) {
-				// Check if the click should be ignored
-				if (ignoreNextGlobalInput) {
-				  // Reset the flag and ignore the click
-				  ignoreNextGlobalInput = false;
-				} else {
-				  // Handle global input
-				  throwKnife();
-				}
-			  }, this);
-		}
-		
+		this.knife = self.physics.add.sprite(config.width / 2, 940, spriteKey(stringKnifeTexture));
+		this.knife.body.setSize(30, 30);
+		this.knife.body.allowGravity = false;
+		this.physics.add.overlap(this.knife, this.target, knifeCollision, null, this);
+		this.physics.add.overlap(this.knife, this.stuckKnives, stuckKnifeCollision, null, this);
+		this.physics.add.overlap(this.knife, this.bonusInGame, bonusCollision, null, this);
+		this.input.on('pointerdown', throwKnife, this);
 
 		this.input.on('gameobjectdown', (pointer, obj) => {
-
-			if (obj.isButton && CAN_PLAY) {
+			if (obj.isButton) {
 				//playSound('click', this);
 				this.tweens.add({
 					targets: obj,
@@ -404,18 +198,10 @@ class Game extends Phaser.Scene {
 					duration: 100,
 					onComplete: function () {
 						if (obj.name === 'menu') {
-							// self.scene.start('menu')
+							self.scene.start('menu')
 						} else if (obj.name === 'restart') {
-							// SHOW_GAMEPLAY = true
-							// CAN_PLAY = false
-							// knives.clear(true, true); // Destroy and remove all children from the knives group
-
-							// // Remove all background knives from the bgKnives group
-							// bgKnives.clear(true, true);
-							// // bgTexture = Phaser.Math.RND.pick(['bg_cloud', 'bg_rock', 'bg_sky', 'bg_wood']);
-
-							// self.scene.restart();
-							window.open(`http://localhost:5000/?roomID=${ROOM_ID}&emit=true&playerID=${PLAYER_ID}-temp`, "_blank")
+							bgTexture = Phaser.Math.RND.pick(['bg_cloud', 'bg_rock', 'bg_sky', 'bg_wood']);
+							self.scene.restart();
 						}
 					}
 				})
@@ -423,14 +209,11 @@ class Game extends Phaser.Scene {
 		});
 
 		//changeRotationSpeed();
-		if(!SHOW_GAMEPLAY){
-			spawnKnifeTargets();
-		}
-		
+		spawnKnifeTargets();
 		function spawnKnifeTargets() {
-			let children = knives.getChildren();
-			let childrenBG = bgKnives.getChildren();
-			for (let i = 0; i < targetKnives; i++) {
+			let children = self.knives.getChildren();
+			let childrenBG = self.bgKnives.getChildren();
+			for (let i = 0; i < self.targetKnives; i++) {
 				if (children.length > i) {
 					children[i].setPosition(50, 960 - i * 50);
 					children[i].setTexture('a_knife');
@@ -438,81 +221,65 @@ class Game extends Phaser.Scene {
 					childrenBG[i].angle = 0;
 				}
 				else {
-					bgKnives.get(50, 960 - i * 50, spriteKey('c_knife'));
-					knives.get(50, 960 - i * 50, spriteKey('a_knife'));
+					self.bgKnives.get(50, 960 - i * 50, spriteKey('c_knife'));
+					self.knives.get(50, 960 - i * 50, spriteKey('a_knife'));
 				}
 			}
 		}
+
+
 		//after level 1
 		function recreateLevel() {
-
 			resetKnife();
 			self.tweens.killAll();
 			let _randompickTarget = Phaser.Math.RND.pick(['target_1', 'target_2', 'target_3', 'target_5', 'target_6']);//remove target_4, for make as boss
 			stringKnifeTexture = Phaser.Math.RND.pick(['knife_1', 'knife_2', 'knife_3', 'knife_4', 'knife_5', 'knife_6', 'knife_7', 'knife_8', 'knife_9', 'knife_10', 'knife_11']);
-
-			self.firstPickTarget = _randompickTarget
-			self.firstStringKnife = stringKnifeTexture
-
-
 			if (isBoss) _randompickTarget = 'target_4';
 			self.target.setTexture(spriteKey(_randompickTarget));
 			randompickTarget = _randompickTarget;
 			self.target.setScale(1);
 			//knife.setVisible(true);
-			knife.y = 940;
-			knife.setTexture(spriteKey(stringKnifeTexture));
+			self.knife.y = 940;
+			self.knife.setTexture(spriteKey(stringKnifeTexture));
 
 			currentLevel += 1;
-			targetKnives = defaultTargetKnives + currentLevel;
-			if (targetKnives > 9) targetKnives = 9;
+			self.targetKnives = defaultTargetKnives + currentLevel;
+			if (self.targetKnives > 9) self.targetKnives = 9;
 			//targetKnifes = 6;
 			self.targetBreak = false;
-
 			spawnKnifeTargets();
 
-			let pickTween = Phaser.Math.RND.pick(['Sine', 'Linear']);
+			let pickTween = Phaser.Math.RND.pick(['Linear']);
 			let defaultTimeDuration = 2000; //1800 //1300
-			let rotationDuration = 0;
-			rotationDuration = Phaser.Math.RND.between(15, 20) * 100;
+			self.rotationDuration = 0;
+
 			if (START_EMITTING) {
 				window.socket.emit("newLevel", {
 					pickTarget: _randompickTarget,
 					stringKnife: stringKnifeTexture,
 					pickTween: pickTween,
 					roomID: ROOM_ID,
-					rotationDuration: rotationDuration
+					rotationDuration: self.rotationDuration
 				})
 			}
 
-
 			if (pickTween == 'Sine') {
-				rotationDuration = defaultTimeDuration;
+				self.rotationDuration = defaultTimeDuration;
 				targetRotation.push(Math.PI * 2.25);
 				targetRotation.push(-Math.PI * 2.5);
 			}
 			else { //Linear
-
+				self.rotationDuration = Phaser.Math.RND.between(15, 20) * 100;
 				targetRotation.push(Math.PI * 2);
 			}
 
-			// LET'S ROTATE THE TARGET
-			// let random = Phaser.Math.RND.pick(['Sine', 'Sine.easeIn', 'Sine.easeOut', 'Sine.easeInOut', 'Quad', 'Cubic', 'Linear', 'Quart']);
-			// let arrayPick = [0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
-			// let randomInt = Phaser.Math.RND.between(0, arrayPick.length - 1);
-			// targetRotation.push(arrayPick[randomInt]);
-			// arrayPick.splice(randomInt, 1);
-			// randomInt = Phaser.Math.RND.between(0, arrayPick.length - 1);
-			// targetRotation.push(arrayPick[randomInt]);
-			// targetRotation = randomPick;
 			targetTween = self.tweens.add({
 				targets: self.target,
 				rotation: targetRotation[0],
-				duration: rotationDuration,
-				//yoyo: true,
-				//repeat: -1,
+				duration: self.rotationDuration,
+
 				onComplete: () => {
-					retweenTarget(pickTween, rotationDuration, targetRotation[0], targetRotation);
+					retweenTarget(pickTween, self.rotationDuration, targetRotation[0], targetRotation);
 				},
 				ease: pickTween//random
 			});
@@ -529,13 +296,13 @@ class Game extends Phaser.Scene {
 			for (let i = 0; i < obstacle; i++) {
 				//let radianOnTarget = Phaser.Math.FloatBetween(0, Math.PI * 2);
 				let pick = Phaser.Math.RND.between(0, randPick.length - 1);
-				let radianOnTarget = randPick[pick];
+				self.radianOnTarget = randPick[pick];
 				randPick.splice(pick, 1);
-				let _x = Math.cos(radianOnTarget) * self.targetDiameter * 0.5;
-				let _y = Math.sin(radianOnTarget) * self.targetDiameter * 0.5;
+				let _x = Math.cos(self.radianOnTarget) * self.targetDiameter * 0.5;
+				let _y = Math.sin(self.radianOnTarget) * self.targetDiameter * 0.5;
 				let stuckKnife = self.physics.add.sprite(self.target.x + _x, self.target.y + _y, 'knife_1');
 				stuckKnife.body.setSize(30, 30);
-				stuckKnife.radianOnTarget = radianOnTarget;
+				stuckKnife.radianOnTarget = self.radianOnTarget;
 				//console.log(_x, _y, radianOnTarget);
 				self.stuckKnives.add(stuckKnife);
 			}
@@ -544,18 +311,15 @@ class Game extends Phaser.Scene {
 			let possibleFruitShow = Math.random() * 100 > 75 ? true : false;
 			if (possibleFruitShow) {
 				let pick = Phaser.Math.RND.between(0, randPick.length - 1);
-				let radianOnTarget = randPick[pick];
+				self.radianOnTarget = randPick[pick];
 				randPick.splice(pick, 1);
-				let _x = Math.cos(radianOnTarget) * self.targetDiameter * 0.5;
-				let _y = Math.sin(radianOnTarget) * self.targetDiameter * 0.5;
+				let _x = Math.cos(self.radianOnTarget) * self.targetDiameter * 0.5;
+				let _y = Math.sin(self.radianOnTarget) * self.targetDiameter * 0.5;
 				let watermelon = self.physics.add.sprite(self.target.x + _x, self.target.y + _y, 'watermelon');
 				watermelon.body.setSize(48, 48);
-				watermelon.radianOnTarget = radianOnTarget;
+				watermelon.radianOnTarget = self.radianOnTarget;
 				self.bonusInGame.add(watermelon);
 			}
-
-
-
 
 		}
 		function showBossMode() {
@@ -599,19 +363,17 @@ class Game extends Phaser.Scene {
 			});
 		}
 		function resetKnife() {
-
-			knife.setVelocityY(0);
-			knife.setPosition(config.width / 2, 940);
-			isKnifeFlying = false;
-
+			self.knife.setVelocityY(0);
+			self.knife.setPosition(config.width / 2, 940);
+			self.isKnifeFlying = false;
 		}
 		function spawnStuckKnife() {
+
 			let stuckKnife = self.physics.add.sprite(self.target.x, self.target.y + self.targetDiameter / 2, spriteKey(stringKnifeTexture));
 			stuckKnife.body.setSize(30, 30);
 			stuckKnife.radianOnTarget = self.target.rotation;
 			self.stuckKnives.add(stuckKnife);
-			//self.target.rotation += 0.15;
-			//emitter.particleTint = particleTint
+
 			emitter.emitParticleAt(self.target.x, self.target.y + self.targetDiameter / 2, 8);
 
 		}
@@ -622,7 +384,7 @@ class Game extends Phaser.Scene {
 			resetKnife();
 			shakeCamera();
 			if (!SHOW_GAMEPLAY) {
-				targetKnives--;
+				self.targetKnives--;
 				score++;
 				var data = {
 					roomID: ROOM_ID,
@@ -637,11 +399,11 @@ class Game extends Phaser.Scene {
 				window.socket.emit("scoreUpdate", {
 					roomID: ROOM_ID,
 					score: score,
-					targetKnives: targetKnives
+					targetKnives: self.targetKnives
 				})
 			} else {
-				if(!SHOW_GAMEPLAY){
-					if (targetKnives <= 0) {
+				if(!SHOW_GAMEPLAY) {
+					if (self.targetKnives <= 0) {
 						targetTween.stop();
 						self.targetBreak = true;
 						self.target.setScale(0);
@@ -679,20 +441,59 @@ class Game extends Phaser.Scene {
 					}
 				}
 			}
+
+			// this.targetKnives--;
+			// score++;
+			// scoreText.text = score;
+
+			// checkSaveScore();
+			// if (this.targetKnives <= 0) {
+			// 	targetTween.stop();
+			// 	self.targetBreak = true;
+			// 	self.target.setScale(0);
+			// 	breakTarget(randompickTarget, 720, 600, 0);
+			// 	breakTarget(randompickTarget, 0, 600, 90);
+			// 	breakTarget(randompickTarget, 0, 20, 180);
+			// 	breakTarget(randompickTarget, 720, 20, 270);
+			// 	self.physics.world.gravity = { x: 0, y: 300 };
+			// 	for (let sKnife of self.stuckKnives.getChildren()) {
+			// 		sKnife.body.velocity.y = 100 + Math.random() * 300;
+			// 		self.tweens.add({
+			// 			targets: sKnife,
+			// 			angle: (Math.random() >= 0.5) ? 360 : -360,
+			// 			duration: Phaser.Math.Between(2000, 4000),
+			// 			repeat: -1,
+			// 			ease: 'Sine.easeIn'
+			// 		})
+			// 	}
+
+			// 	knife.y = -1000;
+
+			// 	self.time.addEvent({
+			// 		delay: 1500,
+			// 		callback: () => {
+			// 			if (currentLevel % 2 == 0 && currentLevel > 0) {
+			// 				showBossMode();
+			// 			}
+			// 			else {
+			// 				recreateLevel();
+			// 				isBoss = false;
+			// 				//bossMode()
+			// 			}
+			// 		}
+			// 	})
+			// }
+
 			if(!SHOW_GAMEPLAY){
 				this.scoreText.text = score;
 				// let knivesChildren = knives.getChildren();
 				// knivesChildren[targetKnives].setTexture('b_knife');
 				checkSaveScore();
 			}
-			
-
-			
 		}
 		function stuckKnifeCollision(knife, stuckKnife) {
 			// Gameover
 			if (!self.isGameover) {
-
 				playSound('hit_knife', self);
 				var data = {
 					roomID: ROOM_ID,
@@ -701,7 +502,6 @@ class Game extends Phaser.Scene {
 				if(!SHOW_GAMEPLAY){
 					window.socket.emit("gameEnd", data)
 				}
-				
 				self.isGameover = true;
 				self.physics.world.gravity = { x: 0, y: 300 };
 				for (let sKnife of self.stuckKnives.getChildren()) {
@@ -714,49 +514,37 @@ class Game extends Phaser.Scene {
 						ease: 'Sine.easeIn'
 					})
 				}
-
-				// if (START_EMITTING) {
-				// 	window.socket.emit("emitGameEnd", {
-				// 		roomID: ROOM_ID
-				// 	})
-				// }
 				knife.setVisible(false);
+
 				self.time.delayedCall(500, gameOver);
 			}
 		}
 		function bonusCollision(knife, bonus) {
 			bonus.destroy();
 			score += 5;
-			this.scoreText.text = score;
+			scoreText.text = score;
 			checkSaveScore();
 		}
 		function throwKnife() {
-
-			if (CAN_PLAY) {
-				if (this?.state == 'wait' || this?.isGameover) return;
-				if (!isKnifeFlying) {
-					if (START_EMITTING) {
-						window.socket.emit("throw", { roomID: ROOM_ID })
-					}
-					isKnifeFlying = true;
-					knife.setVelocityY(-2200);
-					let animsKnives = targetKnives - 1;
-					if (animsKnives >= 0) {
-						let childrenBG = bgKnives.getChildren();
-						let childrenKnives = knives.getChildren();
-						self.tweens.add({
-							targets: [childrenBG[animsKnives], childrenKnives[animsKnives]],
-							angle: 180,
-							duration: 100,
-							onComplete: function (tween, objs) {
-								let obj = objs[1];
-								obj.setTexture('b_knife');
-							}
-						})
-					}
+			if (this.state == 'wait' || this.isGameover) return;
+			if (!self.isKnifeFlying) {
+				self.isKnifeFlying = true;
+				self.knife.setVelocityY(-2200);
+				let animsKnives = this.targetKnives - 1;
+				if (animsKnives >= 0) {
+					let childrenBG = self.bgKnives.getChildren();
+					let childrenKnives = self.knives.getChildren();
+					self.tweens.add({
+						targets: [childrenBG[animsKnives], childrenKnives[animsKnives]],
+						angle: 180,
+						duration: 100,
+						onComplete: function (tween, objs) {
+							let obj = objs[1];
+							obj.setTexture('b_knife');
+						}
+					})
 				}
 			}
-
 		}
 		function shakeCamera() {
 			self.cameras.main.shake(100, 0.01);
@@ -769,8 +557,7 @@ class Game extends Phaser.Scene {
 			sprite.setMask(mask);
 			self.tweens.add({
 				targets: [sprite, spriteMask],
-				//x: targetMoveX,
-				//y: targetMoveY,
+
 				angle: Math.random() > 0.5 ? 180 : -180,
 				duration: 1200,
 				alpha: 0,
@@ -810,54 +597,124 @@ class Game extends Phaser.Scene {
 			self.add.sprite(config.width / 2, config.height / 2, 'popup');
 			self.add.sprite(config.width / 2, 390, 'txt_gameover');
 			self.add.sprite(config.width / 2, 490, 'bar_score');
-			// self.add.sprite(config.width/2, 560, 'bar_best');
+			// self.add.sprite(config.width / 2, 560, 'bar_best');
 			self.add.text(config.width / 2 + 110, 490, score, { fontFamily: 'vanilla', fontSize: 28, align: 'right', color: '#FFFFFF' }).setOrigin(1, 0.5).setDepth(1);
-			// self.add.text(config.width/2 + 110, 560, bestscore, { fontFamily: 'vanilla', fontSize: 28, align: 'right', color: '#FFFFFF' }).setOrigin(1, 0.5).setDepth(1);
-			// createButton(config.width * 0.5 - 100, 670, 'menu', self)	
-			// if (!START_EMITTING) {
-			// 	if(!BOT_PLAY){
-			// 		self.add.text(config.width / 2 + 150, 590, "OTHER PLAYER GAMEPLAY", { fontFamily: 'vanilla', fontSize: 20, align: 'center', color: '#FFFFFF' }).setOrigin(1, 0.5).setDepth(1);
-			// 		createButton(config.width / 2, 670, 'restart', self)
-			// 	}
-
-			// }
-			if (BOT_PLAY) {
-				CAN_PLAY = false
-				window.socket.emit("botPlayFinish", { roomID: ROOM_ID })
-			}
-
+			// self.add.text(config.width / 2 + 110, 560, bestscore, { fontFamily: 'vanilla', fontSize: 28, align: 'right', color: '#FFFFFF' }).setOrigin(1, 0.5).setDepth(1);
 			// createButton(config.width * 0.5 - 100, 670, 'menu', self)
+			// createButton(config.width * 0.5 + 100, 670, 'restart', self)
 		}
+
+		
+		this.botPlay();
 
 		if (START_EMITTING) {
 			this.emitGameState();
 		}
-		self.knife = knife
 
+	}
 
-		if (SHOW_GAMEPLAY) {
-			// let children = knives.getChildren();
-			// let childrenBG = bgKnives.getChildren();
-			// for (let i = 0; i < targetKnives; i++) {
-			// 	if (children.length > i) {
-			// 		children[i].setVisible(false); 
-			// 		childrenBG[i].setVisible(false);
-			// 	}
-			// 	else {
-			// 		bgKnives.get(50, 960 - i * 50, spriteKey('c_knife'));
-			// 		knives.get(50, 960 - i * 50, spriteKey('a_knife'));
-			// 	}
-			// }
+	botPlay() {
+		if (this.botActive && this.state === 'play' && !this.isKnifeFlying) {
+			const currentTime = this.time.now;
+
+			// Check if enough time has passed based on the random delay
+			if (currentTime - this.lastThrowTime > this.nextThrowDelay) {
+				if (this.isSafeToThrow()) {
+					this.throwKnife();
+					this.lastThrowTime = currentTime;
+
+					// Set the next random delay between 500 and 2000 milliseconds
+					this.nextThrowDelay = Phaser.Math.Between(5000, 10000);
+				}
+			}
 		}
-		if (BOT_PLAY) {
-			this.time.addEvent({
-				delay: 1000, // 1000 ms = 1 second
-				callback: this.generateRandomNumber,
-				callbackScope: this,
-				loop: true // Repeat the event indefinitely
-			});
+	};
+
+	// Function to check if it is safe for the bot to throw a knife
+	isSafeToThrow() {
+		const rotationDuration = this.rotationDuration;
+		const landingX = 470;
+		const landingY = 517;
+		const dangerZoneRadius = 50; // ±60 around the target landing position
+		const safeDistance = 60; // Minimum distance between knives
+
+		// Calculate rotation speed in radians per second
+		const rotationPerSecond = (Math.PI * 2) / rotationDuration;
+
+		// Define the danger zone area
+		const minX = landingX - dangerZoneRadius;
+		const maxX = landingX + dangerZoneRadius;
+		const minY = landingY - dangerZoneRadius;
+		const maxY = landingY + dangerZoneRadius;
+
+		let safe = true;
+
+		// Calculate the time for each knife to enter the danger zone
+		this.stuckKnives.getChildren().forEach((stuckKnife) => {
+			const stuckKnifeX = stuckKnife.x;
+			const stuckKnifeY = stuckKnife.y;
+
+			// Calculate the distance from the knife to the center of the danger zone
+			const distanceToDangerZone = Phaser.Math.Distance.Between(stuckKnifeX, stuckKnifeY, landingX, landingY);
+
+			// Calculate the time required for the knife to reach the danger zone center
+			// Assuming the knife moves with a constant speed that covers the distance in a time proportional to the rotation speed
+			const timeToReachDangerZone = distanceToDangerZone / (rotationPerSecond * (this.targetDiameter / 2));
+
+			// Check if any knife is within the danger zone radius or if it is too close to the landing area
+			const xInRange = stuckKnifeX >= minX && stuckKnifeX <= maxX;
+			const yInRange = stuckKnifeY >= minY && stuckKnifeY <= maxY;
+
+			if (xInRange && yInRange) {
+				safe = false;
+				// console.log(`Knife at (${stuckKnifeX}, ${stuckKnifeY}) is within danger zone.`);
+			}
+
+			// Check distance between knives to ensure minimum safe distance
+			if (distanceToDangerZone < safeDistance) {
+				safe = false;
+				// console.log(`Knife at (${stuckKnifeX}, ${stuckKnifeY}) is too close to the danger zone.`);
+			}
+
+			// Print debug information for time to reach the danger zone
+			if (timeToReachDangerZone < 500) { // Adjust the threshold as needed
+				// console.log(`Time to reach danger zone: ${timeToReachDangerZone} seconds`);
+			}
+
+			console.log(stuckKnife.x, stuckKnife.y)
+		});
+
+		return safe;
+	}
+
+
+
+	throwKnife() {
+		if (this?.state === 'wait' || this.isGameover) return;
+		if (!this.isKnifeFlying) {
+			if (START_EMITTING) {
+				window.socket.emit("throw", { roomID: ROOM_ID })
+			}
+			this.isKnifeFlying = true;
+			this.knife.setVelocityY(-2200);
+
+			let animsKnives = this.targetKnives - 1;
+			if (animsKnives >= 0) {
+				let childrenBG = this.bgKnives.getChildren();
+				let childrenKnives = this.knives.getChildren();
+				this.tweens.add({
+					targets: [childrenBG[animsKnives], childrenKnives[animsKnives]],
+					angle: 180,
+					duration: 100,
+					onComplete: function (tween, objs) {
+						let obj = objs[1];
+						obj.setTexture('b_knife');
+					}
+				});
+			}
 		}
 	}
+
 	emitGameState() {
 		const gameState = {
 			targetRotation: this.target.rotation,
@@ -912,15 +769,8 @@ class Game extends Phaser.Scene {
 
 	}
 
-	generateRandomNumber() {
-		// Generate a random number between 2 and 5
-		const randomNumber = Phaser.Math.Between(1, 5);
-		if (this.OpponentScoreText) {
-			this.OpponentScoreText.text = randomNumber + Number(this.OpponentScoreText.text)
-		}
 
 
-	}
 }
 var config = {
 	type: Phaser.AUTO,
