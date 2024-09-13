@@ -22,6 +22,7 @@ class Game extends Phaser.Scene {
 		this.firstStringKnife = null;
 		this.firstPickTarget = null;
 		this.OpponentScoreText = null
+		this.timerValue = 0;
 	}
 
 	update() {
@@ -169,6 +170,31 @@ class Game extends Phaser.Scene {
 		});
 
 		//ui score
+
+		this.timerText = this.add.text(500, 950, `Timer: ${this.timerValue}`, {
+			fontSize: '32px',
+			fill: '#ffffff'
+		});
+
+		// Set up a repeating timer event that calls `updateTimer` every 1000 ms (1 second)
+		this.time.addEvent({
+			delay: 1000,  // 1 second
+			callback: this.updateTimer,
+			callbackScope: this,
+			loop: true    // Make sure the timer loops
+		});
+
+		this.onTimerComplete = () => {
+			CAN_BOT_PLAY = false
+			var data = {
+				roomID: ROOM_ID,
+				playerID: PLAYER_ID,
+			}
+			window.socket.emit("gameEnd", data)
+			self.time.delayedCall(500, gameOver);
+
+		};
+
 		// this.add.sprite(50, 50, 'icon_score');
 		this.add.text(40, 20, "Game Score", { fontSize: 24, align: 'left', fontFamily: 'vanilla' });
 		if (this.scoreText == null) {
@@ -234,6 +260,7 @@ class Game extends Phaser.Scene {
 			self.tweens.killAll();
 			let _randompickTarget = Phaser.Math.RND.pick(['target_1', 'target_2', 'target_3', 'target_5', 'target_6']);//remove target_4, for make as boss
 			stringKnifeTexture = Phaser.Math.RND.pick(['knife_1', 'knife_2', 'knife_3', 'knife_4', 'knife_5', 'knife_6', 'knife_7', 'knife_8', 'knife_9', 'knife_10', 'knife_11']);
+			
 			if (isBoss) _randompickTarget = 'target_4';
 			self.target.setTexture(spriteKey(_randompickTarget));
 			randompickTarget = _randompickTarget;
@@ -241,7 +268,8 @@ class Game extends Phaser.Scene {
 			//knife.setVisible(true);
 			self.knife.y = 940;
 			self.knife.setTexture(spriteKey(stringKnifeTexture));
-
+			self.firstPickTarget = _randompickTarget
+			self.firstStringKnife = stringKnifeTexture
 			currentLevel += 1;
 			self.targetKnives = defaultTargetKnives + currentLevel;
 			if (self.targetKnives > 9) self.targetKnives = 9;
@@ -251,7 +279,9 @@ class Game extends Phaser.Scene {
 
 			let pickTween = Phaser.Math.RND.pick(['Linear']);
 			let defaultTimeDuration = 2000; //1800 //1300
-			self.rotationDuration = 0;
+			let rotDuration = 0;
+			rotDuration = Phaser.Math.RND.between(15, 20) * 100;
+			self.rotationDuration = rotDuration;
 
 			if (START_EMITTING) {
 				window.socket.emit("newLevel", {
@@ -259,7 +289,7 @@ class Game extends Phaser.Scene {
 					stringKnife: stringKnifeTexture,
 					pickTween: pickTween,
 					roomID: ROOM_ID,
-					rotationDuration: self.rotationDuration
+					rotationDuration: rotDuration
 				})
 			}
 
@@ -320,9 +350,10 @@ class Game extends Phaser.Scene {
 				watermelon.radianOnTarget = self.radianOnTarget;
 				self.bonusInGame.add(watermelon);
 			}
-
+			isBoss = false
 		}
 		function showBossMode() {
+			isBoss = true
 			let txtBoss = self.add.sprite(config.width / 2, -180, 'txt_boss');
 			self.tweens.add({
 				targets: txtBoss,
@@ -339,7 +370,7 @@ class Game extends Phaser.Scene {
 					});
 				}
 			});
-			isBoss = true;
+			// isBoss = true;
 		}
 
 		function retweenTarget(_ease, _duration, _currentRotation, _arrayTargetRotation) {
@@ -522,7 +553,7 @@ class Game extends Phaser.Scene {
 		function bonusCollision(knife, bonus) {
 			bonus.destroy();
 			score += 5;
-			scoreText.text = score;
+			self.scoreText.text = score;
 			checkSaveScore();
 		}
 		function throwKnife() {
@@ -623,11 +654,14 @@ class Game extends Phaser.Scene {
 			// Check if enough time has passed based on the random delay
 			if (currentTime - this.lastThrowTime > this.nextThrowDelay) {
 				if (this.isSafeToThrow()) {
-					this.throwKnife();
-					this.lastThrowTime = currentTime;
+					if(CAN_BOT_PLAY){
+						this.throwKnife();
+						this.lastThrowTime = currentTime;
+					}
+					
 
 					// Set the next random delay between 500 and 2000 milliseconds
-					this.nextThrowDelay = Phaser.Math.Between(5000, 10000);
+					this.nextThrowDelay = Phaser.Math.Between(700, 2000);
 				}
 			}
 		}
@@ -684,7 +718,7 @@ class Game extends Phaser.Scene {
 				// console.log(`Time to reach danger zone: ${timeToReachDangerZone} seconds`);
 			}
 
-			console.log(stuckKnife.x, stuckKnife.y)
+			// console.log(stuckKnife.x, stuckKnife.y)
 		});
 
 		return safe;
@@ -772,13 +806,22 @@ class Game extends Phaser.Scene {
 
 	}
 
+updateTimer() {
 
+		this.timerValue += 1;
+		this.timerText.setText(`Time: ${this.timerValue}`);
+		if (this.timerValue >= 60) {
+			this.onTimerComplete();
+			this.timerValue = 60;
+		}
+	}
 
 }
 var config = {
 	type: Phaser.AUTO,
 	width: 720,
 	height: 1080,
+	visibilityChangePause: false,
 	scale: {
 		mode: Phaser.Scale.FIT,
 		parent: 'game_content',
@@ -791,5 +834,11 @@ var config = {
 		}
 	},
 	scene: [Boot, Load, Menu, Game],
+	fps: {
+		target: 60,  // Target 60 frames per second
+		min: 30,     // Minimum 30 frames per second
+		forceSetTimeOut: true, // Force using setTimeout for frame rate control
+	},
+	visibilityChangePause: false, 
 }
 var game = new Phaser.Game(config);

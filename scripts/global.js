@@ -10,7 +10,9 @@ var CAN_PLAY = true
 var START_EMITTING = false
 var BOT_PLAY = false
 var ignoreNextGlobalInput = false
-var LINK = `https://knife-game.onrender.com`
+var CAN_BOT_PLAY = true
+// var LINK = `https://knife-game.onrender.com`
+var LINK = `http://localhost:5000`
 
 // loadData();
 // function loadData() {
