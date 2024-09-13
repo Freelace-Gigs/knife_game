@@ -51,6 +51,7 @@
     <script type="text/javascript" src="scripts/global.js"></script>
     <script type="text/javascript" src="scripts/lib.js"></script>
     <script type="text/javascript" src="scripts/boot.js"></script>
+    <script type="text/javascript" src="scripts/menu.js"></script>
     <script type="text/javascript" src="scripts/preload.js"></script>
     <style>
       .waiting-message,
@@ -150,12 +151,12 @@
         socket.on("startGameWithEmit", (data) => {
           console.log(data);
           if (data.emittingPlayer === playerID) {
-            console.log("emitting")
+            console.log("emitting");
             START_EMITTING = true;
           } else if (data.inGame == playerID) {
-            console.log("getting")
+            console.log("getting");
             SHOW_GAMEPLAY = true;
-            CAN_PLAY = false
+            CAN_PLAY = false;
             $("#waitingMessage").hide();
             loadScripts(["scripts/menu.js", "scripts/game.js"]);
           }
@@ -218,15 +219,13 @@
 
         socket.on("startGame", (data) => {
           $("#waitingMessage").hide();
-          loadScripts(["scripts/menu.js"]);
-          setTimeout(()=>{
-            if (PLAYER_ID.startsWith('b')) {
+
+          if (PLAYER_ID.startsWith("b")) {
+            CAN_PLAY = false;
             loadScripts(["scripts/gameai.js"]);
           } else {
             loadScripts(["scripts/game.js"]);
           }
-          },1000)
-         
         });
       });
       window.addEventListener("beforeunload", (event) => {

@@ -526,25 +526,28 @@ class Game extends Phaser.Scene {
 			checkSaveScore();
 		}
 		function throwKnife() {
-			if (this.state == 'wait' || this.isGameover) return;
-			if (!self.isKnifeFlying) {
-				self.isKnifeFlying = true;
-				self.knife.setVelocityY(-2200);
-				let animsKnives = this.targetKnives - 1;
-				if (animsKnives >= 0) {
-					let childrenBG = self.bgKnives.getChildren();
-					let childrenKnives = self.knives.getChildren();
-					self.tweens.add({
-						targets: [childrenBG[animsKnives], childrenKnives[animsKnives]],
-						angle: 180,
-						duration: 100,
-						onComplete: function (tween, objs) {
-							let obj = objs[1];
-							obj.setTexture('b_knife');
-						}
-					})
+			if(CAN_PLAY){
+				if (this.state == 'wait' || this.isGameover) return;
+				if (!self.isKnifeFlying) {
+					self.isKnifeFlying = true;
+					self.knife.setVelocityY(-2200);
+					let animsKnives = this.targetKnives - 1;
+					if (animsKnives >= 0) {
+						let childrenBG = self.bgKnives.getChildren();
+						let childrenKnives = self.knives.getChildren();
+						self.tweens.add({
+							targets: [childrenBG[animsKnives], childrenKnives[animsKnives]],
+							angle: 180,
+							duration: 100,
+							onComplete: function (tween, objs) {
+								let obj = objs[1];
+								obj.setTexture('b_knife');
+							}
+						})
+					}
 				}
 			}
+			
 		}
 		function shakeCamera() {
 			self.cameras.main.shake(100, 0.01);
