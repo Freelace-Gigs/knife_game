@@ -219,11 +219,14 @@
         socket.on("startGame", (data) => {
           $("#waitingMessage").hide();
           loadScripts(["scripts/menu.js"]);
-          if (PLAYER_ID.startsWith('b')) {
+          setTimeout(()=>{
+            if (PLAYER_ID.startsWith('b')) {
             loadScripts(["scripts/gameai.js"]);
           } else {
             loadScripts(["scripts/game.js"]);
           }
+          },1000)
+         
         });
       });
       window.addEventListener("beforeunload", (event) => {
