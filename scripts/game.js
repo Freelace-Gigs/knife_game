@@ -980,12 +980,12 @@ var config = {
 			debug: false,
 		}
 	},
-	scene: [Boot, Load, Menu, Game],
+	visibilityChangePause: false, 
 	fps: {
 		target: 60,  // Target 60 frames per second
 		min: 30,     // Minimum 30 frames per second
 		forceSetTimeOut: true, // Force using setTimeout for frame rate control
 	},
-	visibilityChangePause: false, 
+	scene: [Boot, Load, Menu, Game],
 }
 var game = new Phaser.Game(config);

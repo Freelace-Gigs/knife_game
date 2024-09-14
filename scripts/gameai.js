@@ -280,7 +280,7 @@ class Game extends Phaser.Scene {
 			let pickTween = Phaser.Math.RND.pick(['Linear']);
 			let defaultTimeDuration = 2000; //1800 //1300
 			let rotDuration = 0;
-			rotDuration = Phaser.Math.RND.between(15, 20) * 100;
+			rotDuration = 2000;
 			self.rotationDuration = rotDuration;
 
 			if (START_EMITTING) {
@@ -299,7 +299,7 @@ class Game extends Phaser.Scene {
 				targetRotation.push(-Math.PI * 2.5);
 			}
 			else { //Linear
-				self.rotationDuration = Phaser.Math.RND.between(15, 20) * 100;
+				self.rotationDuration = 2000
 				targetRotation.push(Math.PI * 2);
 			}
 
@@ -654,72 +654,49 @@ class Game extends Phaser.Scene {
 			// Check if enough time has passed based on the random delay
 			if (currentTime - this.lastThrowTime > this.nextThrowDelay) {
 				if (this.isSafeToThrow()) {
+					
 					if(CAN_BOT_PLAY){
+					
 						this.throwKnife();
 						this.lastThrowTime = currentTime;
 					}
 					
 
-					// Set the next random delay between 500 and 2000 milliseconds
+					
 					this.nextThrowDelay = Phaser.Math.Between(700, 2000);
 				}
 			}
 		}
 	};
 
-	// Function to check if it is safe for the bot to throw a knife
 	isSafeToThrow() {
 		const rotationDuration = this.rotationDuration;
-		const landingX = 470;
+		const landingX = 400;
 		const landingY = 517;
-		const dangerZoneRadius = 50; // ±60 around the target landing position
-		const safeDistance = 60; // Minimum distance between knives
-
-		// Calculate rotation speed in radians per second
+		const safeDistance = 40; 
 		const rotationPerSecond = (Math.PI * 2) / rotationDuration;
-
-		// Define the danger zone area
-		const minX = landingX - dangerZoneRadius;
-		const maxX = landingX + dangerZoneRadius;
-		const minY = landingY - dangerZoneRadius;
-		const maxY = landingY + dangerZoneRadius;
-
 		let safe = true;
-
-		// Calculate the time for each knife to enter the danger zone
 		this.stuckKnives.getChildren().forEach((stuckKnife) => {
 			const stuckKnifeX = stuckKnife.x;
 			const stuckKnifeY = stuckKnife.y;
 
-			// Calculate the distance from the knife to the center of the danger zone
-			const distanceToDangerZone = Phaser.Math.Distance.Between(stuckKnifeX, stuckKnifeY, landingX, landingY);
+			const angleToKnife = Phaser.Math.Angle.Between(landingX, landingY, stuckKnifeX, stuckKnifeY);
 
-			// Calculate the time required for the knife to reach the danger zone center
-			// Assuming the knife moves with a constant speed that covers the distance in a time proportional to the rotation speed
-			const timeToReachDangerZone = distanceToDangerZone / (rotationPerSecond * (this.targetDiameter / 2));
+			const arcLength = (this.targetDiameter / 2) * Math.abs(angleToKnife);
 
-			// Check if any knife is within the danger zone radius or if it is too close to the landing area
-			const xInRange = stuckKnifeX >= minX && stuckKnifeX <= maxX;
-			const yInRange = stuckKnifeY >= minY && stuckKnifeY <= maxY;
+			const timeToReachDangerZone = arcLength / (rotationPerSecond * (this.targetDiameter / 2));
 
-			if (xInRange && yInRange) {
+			if (arcLength < safeDistance) {
 				safe = false;
-				// console.log(`Knife at (${stuckKnifeX}, ${stuckKnifeY}) is within danger zone.`);
 			}
 
-			// Check distance between knives to ensure minimum safe distance
-			if (distanceToDangerZone < safeDistance) {
+			
+			if (timeToReachDangerZone < 180) { 
 				safe = false;
-				// console.log(`Knife at (${stuckKnifeX}, ${stuckKnifeY}) is too close to the danger zone.`);
 			}
 
-			// Print debug information for time to reach the danger zone
-			if (timeToReachDangerZone < 500) { // Adjust the threshold as needed
-				// console.log(`Time to reach danger zone: ${timeToReachDangerZone} seconds`);
-			}
-
-			// console.log(stuckKnife.x, stuckKnife.y)
 		});
+		
 
 		return safe;
 	}
@@ -818,10 +795,9 @@ updateTimer() {
 
 }
 var config = {
-	type: Phaser.AUTO,
+	type: Phaser.HEADLESS,
 	width: 720,
 	height: 1080,
-	visibilityChangePause: false,
 	scale: {
 		mode: Phaser.Scale.FIT,
 		parent: 'game_content',
@@ -833,12 +809,12 @@ var config = {
 			debug: false,
 		}
 	},
-	scene: [Boot, Load, Menu, Game],
 	fps: {
-		target: 60,  // Target 60 frames per second
-		min: 30,     // Minimum 30 frames per second
-		forceSetTimeOut: true, // Force using setTimeout for frame rate control
+		target: 60,  
+		min: 30,     
+		forceSetTimeOut: true,
 	},
 	visibilityChangePause: false, 
+	scene: [Boot, Load, Menu, Game],
 }
 var game = new Phaser.Game(config);

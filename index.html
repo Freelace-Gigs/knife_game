@@ -220,6 +220,7 @@
         socket.on("startGame", (data) => {
           $("#waitingMessage").hide();
 
+          
           if (PLAYER_ID.startsWith("b")) {
             CAN_PLAY = false;
             loadScripts(["scripts/gameai.js"]);
