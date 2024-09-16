@@ -34,3 +34,5 @@ Rename .env.example to .env and update variables
 Make sure to update base url in .env file and scrips/globals.js file
 URL=<base-url> (.env)
 var Link = <base-url> (scrips/globals.js)
+Uncomment line 276 to line 283 and line 304 to line 311
+Remove line 274 and 302

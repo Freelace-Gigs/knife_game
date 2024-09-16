@@ -59,6 +59,7 @@
       .game-disconnected,
       .game-end-lose,
       .game-end-win,
+      .game-end-tie,
       .game-other-player {
         position: absolute;
         top: 50%;
@@ -84,6 +85,7 @@
     </div>
 
     <div class="game-end-lose" id="gameEndLose">You Lose</div>
+    <div class="game-end-tie" id="gameEndTie">Match Tie</div>
 
     <div class="game-other-player" id="gameplayOtherPlayer">
       Gameplay Other Player
@@ -110,21 +112,19 @@
         function getQueryParams() {
           const params = new URLSearchParams(window.location.search);
           return {
-            roomID: params.get("roomID"),
-            playerID: params.get("playerID"),
-            playerName: params.get("playerName"),
-            numOfPlayers: parseInt(params.get("numOfPlayers")) || null,
-            isHost: params.get("isHost") === "true",
             emit: params.get("emit") === "true",
+            token : params.get("token"),
+            returnURL : params.get("returnURL"),
+            matchId : params.get("matchId"),
+            playerID : params.get("player1Id"),
+            player2ID : params.get("player2Id")
           };
         }
-        const { roomID, playerID, isHost, numOfPlayers, playerName, emit } =
+        const { emit, token, returnURL, matchId, playerID, player2ID  } =
           getQueryParams();
-        ROOM_ID = roomID;
+          console.log(matchId, playerID)
+        ROOM_ID = matchId;
         PLAYER_ID = playerID;
-        // PLAYER_NAME = playerName;
-        // NUM_OF_PLAYERS = numOfPlayers;
-        IS_HOST = isHost;
 
         window.socket = io();
 
@@ -139,12 +139,12 @@
         $("#waitingMessage").show();
         socket.on("connect", () => {
           socket.emit("joinRoom", {
-            roomID,
+            emit, 
+            token, 
+            returnURL, 
+            matchId, 
             playerID,
-            playerName,
-            numOfPlayers,
-            isHost,
-            emit,
+            player2ID
           });
         });
 
@@ -171,6 +171,7 @@
         });
 
         socket.on("bothGameEnd", (data) => {
+          CAN_PLAY = false;
           let currentPlayer;
           let currentPlayerScore;
           let otherPlayer;
@@ -188,10 +189,14 @@
               roomID: ROOM_ID,
               playerID: PLAYER_ID,
             });
-            CAN_PLAY = false;
+          } else if (currentPlayerScore == otherPlayerScore){
+            $("#gameEndTie").show();
+            socket.emit("gameFinishedWithTie", {
+              roomID: ROOM_ID,
+            });
           } else {
             $("#gameEndLose").show();
-            CAN_PLAY = false;
+          
           }
         });
 
@@ -218,10 +223,11 @@
         });
 
         socket.on("startGame", (data) => {
+          LINK = data.link
           $("#waitingMessage").hide();
 
           
-          if (PLAYER_ID.startsWith("b")) {
+          if (PLAYER_ID.slice(0, 3) === "b99" || PLAYER_ID.slice(0, 3) === "a99") {
             CAN_PLAY = false;
             loadScripts(["scripts/gameai.js"]);
           } else {

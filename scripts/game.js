@@ -239,41 +239,7 @@ class Game extends Phaser.Scene {
 
 		})
 
-		// window.socket.on("next", () => {
-		// 	targetTween.stop();
-		// 	self.targetBreak = true;
-		// 	self.target.setScale(0);
-		// 	breakTarget(randompickTarget, 720, 600, 0);
-		// 	breakTarget(randompickTarget, 0, 600, 90);
-		// 	breakTarget(randompickTarget, 0, 20, 180);
-		// 	breakTarget(randompickTarget, 720, 20, 270);
-		// 	self.physics.world.gravity = { x: 0, y: 300 };
-		// 	for (let sKnife of self.stuckKnives.getChildren()) {
-		// 		sKnife.body.velocity.y = 100 + Math.random() * 300;
-		// 		self.tweens.add({
-		// 			targets: sKnife,
-		// 			angle: (Math.random() >= 0.5) ? 360 : -360,
-		// 			duration: Phaser.Math.Between(2000, 4000),
-		// 			repeat: -1,
-		// 			ease: 'Sine.easeIn'
-		// 		})
-		// 	}
-		// 	knife.y = -1000;
-
-		// 	self.time.addEvent({
-		// 		delay: 1500,
-		// 		callback: () => {
-		// 			if (currentLevel % 2 == 0 && currentLevel > 0) {
-		// 				showBossMode();
-		// 			}
-		// 			else {
-		// 				recreateLevel();
-		// 				isBoss = false;
-		// 			}
-		// 		}
-		// 	})
-
-		// })
+		
 
 
 		playSound('target_shown', this);
@@ -307,16 +273,7 @@ class Game extends Phaser.Scene {
 		this.target.setScale(0);
 		this.target.setCircle(this.targetDiameter / 2);
 		this.target.body.allowGravity = false;
-		//'Quad.easeIn'
-		//let random = Phaser.Math.RND.pick(['Sine', 'Sine.easeIn', 'Sine.easeOut', 'Sine.easeInOut', 'Quad', 'Cubic', 'Linear', 'Quart']);
-		// let targetTween = this.tweens.add({
-		// 	targets: this.target,
-		// 	rotation: Math.PI * 2.5,
-		// 	duration: 4000,
-		// 	yoyo: true,
-		// 	repeat: -1,
-		// 	ease: random
-		// });
+	
 		let targetTween = null;
 		let targetRotation = [];
 
@@ -352,12 +309,12 @@ class Game extends Phaser.Scene {
 		//ui score
 		// this.add.sprite(50, 50, 'icon_score');
 
-		if(!SHOW_GAMEPLAY){
+		if (!SHOW_GAMEPLAY) {
 			this.timerText = this.add.text(500, 950, `Timer: ${this.timerValue}`, {
 				fontSize: '32px',
 				fill: '#ffffff'
 			});
-	
+
 			// Set up a repeating timer event that calls `updateTimer` every 1000 ms (1 second)
 			this.time.addEvent({
 				delay: 1000,  // 1 second
@@ -365,20 +322,19 @@ class Game extends Phaser.Scene {
 				callbackScope: this,
 				loop: true    // Make sure the timer loops
 			});
-	
+
 			this.onTimerComplete = () => {
-				CAN_PLAY = false
 				var data = {
 					roomID: ROOM_ID,
 					playerID: PLAYER_ID,
 				}
 				window.socket.emit("gameEnd", data)
 				self.time.delayedCall(500, gameOver);
-	
+
 			};
 		}
 
-		
+
 
 		this.add.text(40, 20, "Game Score", { fontSize: 24, align: 'left', fontFamily: 'vanilla' });
 
@@ -396,10 +352,6 @@ class Game extends Phaser.Scene {
 		if (!SHOW_GAMEPLAY) {
 			createButton(590, 1030, 'restart', self)
 		}
-
-		//for testing best rotation theme
-		//this.add.text(config.width * 0.5, 600, random, { fontSize: 50, align: 'center', fontFamily: 'vanilla' }).setOrigin(0.5);
-
 
 		let knife = self.physics.add.sprite(config.width / 2, 940, spriteKey(stringKnifeTexture));
 
@@ -429,7 +381,6 @@ class Game extends Phaser.Scene {
 		this.input.on('gameobjectdown', (pointer, obj) => {
 
 			if (obj.isButton && CAN_PLAY) {
-				//playSound('click', this);
 				this.tweens.add({
 					targets: obj,
 					scaleX: 0.9,
@@ -438,19 +389,8 @@ class Game extends Phaser.Scene {
 					ease: 'Linear',
 					duration: 100,
 					onComplete: function () {
-						if (obj.name === 'menu') {
-							// self.scene.start('menu')
-						} else if (obj.name === 'restart') {
-							// SHOW_GAMEPLAY = true
-							// CAN_PLAY = false
-							// knives.clear(true, true); // Destroy and remove all children from the knives group
-
-							// // Remove all background knives from the bgKnives group
-							// bgKnives.clear(true, true);
-							// // bgTexture = Phaser.Math.RND.pick(['bg_cloud', 'bg_rock', 'bg_sky', 'bg_wood']);
-
-							// self.scene.restart();
-							window.open(`${LINK}/?roomID=${ROOM_ID}&emit=true&playerID=${PLAYER_ID}-temp`, "_blank")
+						 if (obj.name === 'restart') {
+							window.open(`${LINK}/?matchId=${ROOM_ID}&emit=true&player1Id=${PLAYER_ID}temp`, "_blank")
 						}
 					}
 				})
@@ -534,15 +474,7 @@ class Game extends Phaser.Scene {
 				targetRotation.push(Math.PI * 2);
 			}
 
-			// LET'S ROTATE THE TARGET
-			// let random = Phaser.Math.RND.pick(['Sine', 'Sine.easeIn', 'Sine.easeOut', 'Sine.easeInOut', 'Quad', 'Cubic', 'Linear', 'Quart']);
-			// let arrayPick = [0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
-			// let randomInt = Phaser.Math.RND.between(0, arrayPick.length - 1);
-			// targetRotation.push(arrayPick[randomInt]);
-			// arrayPick.splice(randomInt, 1);
-			// randomInt = Phaser.Math.RND.between(0, arrayPick.length - 1);
-			// targetRotation.push(arrayPick[randomInt]);
-			// targetRotation = randomPick;
+			
 			targetTween = self.tweens.add({
 				targets: self.target,
 				rotation: targetRotation[0],
@@ -720,8 +652,6 @@ class Game extends Phaser.Scene {
 			}
 			if (!SHOW_GAMEPLAY) {
 				this.scoreText.text = score;
-				// let knivesChildren = knives.getChildren();
-				// knivesChildren[targetKnives].setTexture('b_knife');
 				checkSaveScore();
 			}
 
@@ -754,11 +684,6 @@ class Game extends Phaser.Scene {
 					})
 				}
 
-				// if (START_EMITTING) {
-				// 	window.socket.emit("emitGameEnd", {
-				// 		roomID: ROOM_ID
-				// 	})
-				// }
 				knife.setVisible(false);
 				self.time.delayedCall(500, gameOver);
 			}
@@ -849,45 +774,14 @@ class Game extends Phaser.Scene {
 			self.add.sprite(config.width / 2, config.height / 2, 'popup');
 			self.add.sprite(config.width / 2, 390, 'txt_gameover');
 			self.add.sprite(config.width / 2, 490, 'bar_score');
-			// self.add.sprite(config.width/2, 560, 'bar_best');
 			self.add.text(config.width / 2 + 110, 490, score, { fontFamily: 'vanilla', fontSize: 28, align: 'right', color: '#FFFFFF' }).setOrigin(1, 0.5).setDepth(1);
-			// self.add.text(config.width/2 + 110, 560, bestscore, { fontFamily: 'vanilla', fontSize: 28, align: 'right', color: '#FFFFFF' }).setOrigin(1, 0.5).setDepth(1);
-			// createButton(config.width * 0.5 - 100, 670, 'menu', self)	
-			// if (!START_EMITTING) {
-			// 	if(!BOT_PLAY){
-			// 		self.add.text(config.width / 2 + 150, 590, "OTHER PLAYER GAMEPLAY", { fontFamily: 'vanilla', fontSize: 20, align: 'center', color: '#FFFFFF' }).setOrigin(1, 0.5).setDepth(1);
-			// 		createButton(config.width / 2, 670, 'restart', self)
-			// 	}
-
-			// }
-			// if (BOT_PLAY) {
-			// 	CAN_PLAY = false
-			// 	window.socket.emit("botPlayFinish", { roomID: ROOM_ID })
-			// }
-
-			// createButton(config.width * 0.5 - 100, 670, 'menu', self)
+			createButton(config.width / 2, 670, 'restart', self)
 		}
 
 		if (START_EMITTING) {
 			this.emitGameState();
 		}
 		self.knife = knife
-
-
-		if (SHOW_GAMEPLAY) {
-			// let children = knives.getChildren();
-			// let childrenBG = bgKnives.getChildren();
-			// for (let i = 0; i < targetKnives; i++) {
-			// 	if (children.length > i) {
-			// 		children[i].setVisible(false); 
-			// 		childrenBG[i].setVisible(false);
-			// 	}
-			// 	else {
-			// 		bgKnives.get(50, 960 - i * 50, spriteKey('c_knife'));
-			// 		knives.get(50, 960 - i * 50, spriteKey('a_knife'));
-			// 	}
-			// }
-		}
 
 	}
 	emitGameState() {
@@ -980,7 +874,7 @@ var config = {
 			debug: false,
 		}
 	},
-	visibilityChangePause: false, 
+	visibilityChangePause: false,
 	fps: {
 		target: 60,  // Target 60 frames per second
 		min: 30,     // Minimum 30 frames per second

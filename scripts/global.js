@@ -11,7 +11,7 @@ var START_EMITTING = false
 var BOT_PLAY = false
 var ignoreNextGlobalInput = false
 var CAN_BOT_PLAY = true
-var LINK = `http://localhost:5000`
+var LINK = ""
 
 // loadData();
 // function loadData() {
