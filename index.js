@@ -54,10 +54,10 @@ io.on('connection', (socket) => {
     socket.on('joinRoom', async ({ emit, token, returnURL, matchId, playerID, player2ID }) => {
         if (emit) {
             let room = await Room.findOne({ roomID: matchId });
-         
+
             if (room) {
                 const originalPlayerID = playerID.slice(0, -4)
-               
+
                 let myPlayerObject = null;
                 let otherPlayerObject = null;
 
@@ -80,6 +80,7 @@ io.on('connection', (socket) => {
 
         } else {
             try {
+                randomDelay(1, 5, () => { });
                 let room = await Room.findOne({ roomID: matchId });
                 if (!room) {
                     room = new Room({
@@ -96,12 +97,52 @@ io.on('connection', (socket) => {
                         }],
                         gameStarted: false
                     });
-                    await room.save();
-                    socket.join(matchId);
-
-                    if (player2ID.slice(0, 3) === "b99" || player2ID.slice(0, 3) === "a99") {
-                        call_bot(`${process.env.URL}/?token=${token}&returnURL=${returnURL}&matchId=${matchId}&player1Id=${player2ID}&player2Id=${playerID}`, 120000)
+                    let checkRoomAgain = await Room.findOne({ roomID: matchId })
+                    if (!checkRoomAgain) {
+                        await room.save();
+                        socket.join(matchId);
+                        if (player2ID.slice(0, 3) === "b99" || player2ID.slice(0, 3) === "a99") {
+                            call_bot(`${process.env.URL}/?token=${token}&returnURL=${returnURL}&matchId=${matchId}&player1Id=${player2ID}&player2Id=${playerID}`, 120000)
+                        }
                     }
+                    else {
+                        if (room.gameStarted) {
+                            socket.emit('gameStarted', { message: 'Game has already started. You cannot join the room.' });
+                            return;
+                        }
+
+                        const existingPlayer = room.players.find(p => p.playerID === playerID);
+
+                        if (existingPlayer) {
+                            existingPlayer.connected = true;
+                            existingPlayer.socketID = socket.id;
+                        } else {
+                            room.players.push({
+                                playerID,
+                                socketID: socket.id,
+                                connected: true,
+                                score: 0,
+                                gameEnd: false
+                            });
+                        }
+
+                        await room.save();
+                        socket.join(matchId);
+
+                        const playersCount = room.players.filter(p => p.connected).length;
+
+                        if (playersCount === 2) {
+                            room.gameStarted = true;
+                            room.startTime = new Date().getTime();
+                            await room.save();
+                            io.in(matchId).emit('startGame', {
+                                link: process.env.URL
+                            });
+                        }
+                    }
+
+
+
 
                 } else {
 
@@ -251,7 +292,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on("gameFinished", async (data) => {
-        
+
         const roomID = data.roomID;
         const playerID = data.playerID;
         const room = await Room.findOne({ roomID });
@@ -322,4 +363,9 @@ async function call_bot(url, time) {
     await page.goto(url);
     await page.waitForTimeout(time);
     await browser.close();
+}
+
+async function randomDelay(minSeconds, maxSeconds, callback) {
+    const delay = Math.floor(Math.random() * (maxSeconds - minSeconds + 1) + minSeconds) * 1000;
+    setTimeout(callback, delay);
 }
