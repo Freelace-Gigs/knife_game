@@ -80,39 +80,39 @@ io.on('connection', (socket) => {
 
         } else {
             try {
-                randomDelay(1, 5, () => { });
-                let room = await Room.findOne({ roomID: matchId });
-                if (!room) {
-                    room = new Room({
-                        roomID: matchId,
-                        matchID: matchId,
-                        returnURL: returnURL,
-                        token: token,
-                        players: [{
-                            playerID,
-                            socketID: socket.id,
-                            connected: true,
-                            score: 0,
-                            gameEnd: false
-                        }],
-                        gameStarted: false
-                    });
-                    let checkRoomAgain = await Room.findOne({ roomID: matchId })
-                    if (!checkRoomAgain) {
+                randomDelay(5, 10, async() => { 
+                    let room = await Room.findOne({ roomID: matchId });
+                    if (!room) {
+                        room = new Room({
+                            roomID: matchId,
+                            matchID: matchId,
+                            returnURL: returnURL,
+                            token: token,
+                            players: [{
+                                playerID,
+                                socketID: socket.id,
+                                connected: true,
+                                score: 0,
+                                gameEnd: false
+                            }],
+                            gameStarted: false
+                        });
                         await room.save();
                         socket.join(matchId);
                         if (player2ID.slice(0, 3) === "b99" || player2ID.slice(0, 3) === "a99") {
                             call_bot(`${process.env.URL}/?token=${token}&returnURL=${returnURL}&matchId=${matchId}&player1Id=${player2ID}&player2Id=${playerID}`, 120000)
                         }
-                    }
-                    else {
+    
+    
+                    } else {
+    
                         if (room.gameStarted) {
                             socket.emit('gameStarted', { message: 'Game has already started. You cannot join the room.' });
                             return;
                         }
-
+    
                         const existingPlayer = room.players.find(p => p.playerID === playerID);
-
+    
                         if (existingPlayer) {
                             existingPlayer.connected = true;
                             existingPlayer.socketID = socket.id;
@@ -125,12 +125,12 @@ io.on('connection', (socket) => {
                                 gameEnd: false
                             });
                         }
-
+    
                         await room.save();
                         socket.join(matchId);
-
+    
                         const playersCount = room.players.filter(p => p.connected).length;
-
+    
                         if (playersCount === 2) {
                             room.gameStarted = true;
                             room.startTime = new Date().getTime();
@@ -140,46 +140,8 @@ io.on('connection', (socket) => {
                             });
                         }
                     }
-
-
-
-
-                } else {
-
-                    if (room.gameStarted) {
-                        socket.emit('gameStarted', { message: 'Game has already started. You cannot join the room.' });
-                        return;
-                    }
-
-                    const existingPlayer = room.players.find(p => p.playerID === playerID);
-
-                    if (existingPlayer) {
-                        existingPlayer.connected = true;
-                        existingPlayer.socketID = socket.id;
-                    } else {
-                        room.players.push({
-                            playerID,
-                            socketID: socket.id,
-                            connected: true,
-                            score: 0,
-                            gameEnd: false
-                        });
-                    }
-
-                    await room.save();
-                    socket.join(matchId);
-
-                    const playersCount = room.players.filter(p => p.connected).length;
-
-                    if (playersCount === 2) {
-                        room.gameStarted = true;
-                        room.startTime = new Date().getTime();
-                        await room.save();
-                        io.in(matchId).emit('startGame', {
-                            link: process.env.URL
-                        });
-                    }
-                }
+                });
+               
             } catch (error) {
                 console.error('Error joining room:', error);
                 socket.emit('joinRoomError', { message: 'Error joining room. Please try again.' });
