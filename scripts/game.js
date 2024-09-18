@@ -324,6 +324,7 @@ class Game extends Phaser.Scene {
 			});
 
 			this.onTimerComplete = () => {
+				
 				var data = {
 					roomID: ROOM_ID,
 					playerID: PLAYER_ID,
@@ -850,13 +851,16 @@ class Game extends Phaser.Scene {
 	}
 
 	updateTimer() {
-
-		this.timerValue += 1;
-		this.timerText.setText(`Time: ${this.timerValue}`);
-		if (this.timerValue >= 60) {
-			this.onTimerComplete();
-			this.timerValue = 60;
+		if(CAN_PLAY){
+			this.timerValue += 1;
+			this.timerText.setText(`Time: ${this.timerValue}`);
+			if (this.timerValue >= 60) {
+				CAN_PLAY = false
+				this.onTimerComplete();
+				this.timerValue = 60;
+			}
 		}
+		
 	}
 }
 var config = {
