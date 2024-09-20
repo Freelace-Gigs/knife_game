@@ -226,7 +226,7 @@ class Game extends Phaser.Scene {
 						if (obj.name === 'menu') {
 							self.scene.start('menu')
 						} else if (obj.name === 'restart') {
-							bgTexture = Phaser.Math.RND.pick(['bg_cloud', 'bg_rock', 'bg_sky', 'bg_wood']);
+							bgTexture = Phaser.Math.RND.pick(['bg_sky']);
 							self.scene.restart();
 						}
 					}

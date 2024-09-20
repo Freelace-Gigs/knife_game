@@ -247,7 +247,10 @@ class Game extends Phaser.Scene {
 		let isKnifeFlying = false;
 		const minSpeed = 0.007;
 		const maxSpeed = 0.01;
-		this.add.sprite(0, 0, spriteKey(bgTexture)).setOrigin(0);
+		if(window.innerWidth > 768){	
+			this.add.sprite(0, 0, spriteKey(bgTexture)).setOrigin(0);
+		}
+	
 		if (firstLoad) firstLoad = false;
 
 		let defaultTargetKnives = 5;
@@ -863,10 +866,12 @@ class Game extends Phaser.Scene {
 		
 	}
 }
+const isMobile = window.innerWidth <= 768;
 var config = {
 	type: Phaser.AUTO,
 	width: 720,
 	height: 1080,
+	transparent: isMobile,
 	scale: {
 		mode: Phaser.Scale.FIT,
 		parent: 'game_content',
@@ -880,9 +885,9 @@ var config = {
 	},
 	visibilityChangePause: false,
 	fps: {
-		target: 60,  // Target 60 frames per second
-		min: 30,     // Minimum 30 frames per second
-		forceSetTimeOut: true, // Force using setTimeout for frame rate control
+		target: 60,  
+		min: 30,     
+		forceSetTimeOut: true,
 	},
 	scene: [Boot, Load, Menu, Game],
 }
