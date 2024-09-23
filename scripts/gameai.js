@@ -23,6 +23,7 @@ class Game extends Phaser.Scene {
 		this.firstPickTarget = null;
 		this.OpponentScoreText = null
 		this.timerValue = 0;
+		this.currentLevel = 0
 	}
 
 	update() {
@@ -88,7 +89,7 @@ class Game extends Phaser.Scene {
 					self.time.addEvent({
 						delay: 1500,
 						callback: () => {
-							if (currentLevel % 2 == 0 && currentLevel > 0) {
+							if (self.currentLevel % 2 == 0 && self.currentLevel > 0) {
 								showBossMode();
 							}
 							else {
@@ -116,7 +117,6 @@ class Game extends Phaser.Scene {
 
 		let defaultTargetKnives = 5;
 		this.targetKnives = defaultTargetKnives;
-		let currentLevel = 0;
 		let score = 0;
 
 		this.isGameover = false;
@@ -129,7 +129,7 @@ class Game extends Phaser.Scene {
 		this.bonusInGame = this.physics.add.group();
 		let randompickTarget = Phaser.Math.RND.pick(['target_1', 'target_2', 'target_3', 'target_5', 'target_6']);//remove target_4, for make as boss
 		self.firstPickTarget = randompickTarget
-		let stringKnifeTexture = Phaser.Math.RND.pick(['knife_1', 'knife_2', 'knife_3', 'knife_4', 'knife_5', 'knife_6', 'knife_7', 'knife_8', 'knife_9', 'knife_10', 'knife_11']);
+		let stringKnifeTexture = Phaser.Math.RND.pick([ 'knife_11']);
 		self.firstStringKnife = stringKnifeTexture
 		this.target = this.physics.add.sprite(config.width / 2, 300, spriteKey(randompickTarget));
 		this.target.setDepth(1);
@@ -208,7 +208,7 @@ class Game extends Phaser.Scene {
 		this.knife.body.setSize(30, 30);
 		this.knife.body.allowGravity = false;
 		this.physics.add.overlap(this.knife, this.target, knifeCollision, null, this);
-		this.physics.add.overlap(this.knife, this.stuckKnives, stuckKnifeCollision, null, this);
+		// this.physics.add.overlap(this.knife, this.stuckKnives, stuckKnifeCollision, null, this);
 		this.physics.add.overlap(this.knife, this.bonusInGame, bonusCollision, null, this);
 		this.input.on('pointerdown', throwKnife, this);
 
@@ -259,7 +259,7 @@ class Game extends Phaser.Scene {
 			resetKnife();
 			self.tweens.killAll();
 			let _randompickTarget = Phaser.Math.RND.pick(['target_1', 'target_2', 'target_3', 'target_5', 'target_6']);//remove target_4, for make as boss
-			stringKnifeTexture = Phaser.Math.RND.pick(['knife_1', 'knife_2', 'knife_3', 'knife_4', 'knife_5', 'knife_6', 'knife_7', 'knife_8', 'knife_9', 'knife_10', 'knife_11']);
+			stringKnifeTexture = Phaser.Math.RND.pick(['knife_11']);
 			
 			if (isBoss) _randompickTarget = 'target_4';
 			self.target.setTexture(spriteKey(_randompickTarget));
@@ -270,8 +270,8 @@ class Game extends Phaser.Scene {
 			self.knife.setTexture(spriteKey(stringKnifeTexture));
 			self.firstPickTarget = _randompickTarget
 			self.firstStringKnife = stringKnifeTexture
-			currentLevel += 1;
-			self.targetKnives = defaultTargetKnives + currentLevel;
+			self.currentLevel += 1;
+			self.targetKnives = defaultTargetKnives + self.currentLevel;
 			if (self.targetKnives > 9) self.targetKnives = 9;
 			//targetKnifes = 6;
 			self.targetBreak = false;
@@ -320,8 +320,8 @@ class Game extends Phaser.Scene {
 			self.physics.world.gravity = { x: 0, y: 0 };
 
 			//random obstacle
-			let min = currentLevel - 1 < 0 ? 0 : currentLevel - 1;
-			let obstacle = Phaser.Math.RND.between(min, currentLevel + 1);
+			let min = self.currentLevel - 1 < 0 ? 0 : self.currentLevel - 1;
+			let obstacle = Phaser.Math.RND.between(min, self.currentLevel + 1);
 			let randPick = [0, Math.PI * 0.125, Math.PI * 0.25, Math.PI, Math.PI * 0.5, Math.PI * 0.75, Math.PI * 0.625, Math.PI * 0.875, Math.PI * 1.125, Math.PI * 1.25, Math.PI * 1.5, Math.PI * 1.625, Math.PI * 1.75, Math.PI * 1.875, Math.PI * 2];
 			for (let i = 0; i < obstacle; i++) {
 				//let radianOnTarget = Phaser.Math.FloatBetween(0, Math.PI * 2);
@@ -430,7 +430,8 @@ class Game extends Phaser.Scene {
 				window.socket.emit("scoreUpdate", {
 					roomID: ROOM_ID,
 					score: score,
-					targetKnives: self.targetKnives
+					targetKnives: self.targetKnives,
+					target : randompickTarget
 				})
 			} else {
 				if(!SHOW_GAMEPLAY) {
@@ -458,7 +459,7 @@ class Game extends Phaser.Scene {
 						self.time.addEvent({
 							delay: 1500,
 							callback: () => {
-								if (currentLevel % 2 == 0 && currentLevel > 0) {
+								if (self.currentLevel % 2 == 0 && self.currentLevel > 0) {
 									showBossMode();
 								}
 								else {
@@ -814,7 +815,7 @@ var config = {
 		min: 30,     
 		forceSetTimeOut: true,
 	},
-	visibilityChangePause: false, 
+	disableVisibilityChange: true, 
 	scene: [Boot, Load, Menu, Game],
 }
 var game = new Phaser.Game(config);

@@ -261,32 +261,35 @@ io.on('connection', (socket) => {
         const roomID = data.roomID;
         const playerID = data.playerID;
         const room = await Room.findOne({ roomID });
-        let currentPlayer = room.players.find(player => player.playerID === playerID);
-        let otherPlayer = room.players.find(player => player.playerID !== playerID);
-        const url = room.returnURL
-        const dataToSend = {
-            "token": room.token,
-            "event_type": "match_ended",
-            "message": `${playerID} win`,
-            "data": {
+        if(room){
+            let currentPlayer = room.players.find(player => player.playerID === playerID);
+            let otherPlayer = room.players.find(player => player.playerID !== playerID);
+            const url = room.returnURL
+            const dataToSend = {
+                "token": room.token,
                 "event_type": "match_ended",
-                "datetime": new Date().toISOString(),
-                "winner": playerID,
-                "player1Score": currentPlayer.score,
-                "player2Score": otherPlayer.score
-            }
-        };
-
-        await Room.deleteOne({ roomID });
-
-        // try {
-        //     await axios.post(url, dataToSend).then(async () => {
-        //         await Room.deleteOne({ roomID });
-        //     });
-
-        // } catch (error) {
-        //     console.log('Error sending game result:', error);
-        // }
+                "message": `${playerID} win`,
+                "data": {
+                    "event_type": "match_ended",
+                    "datetime": new Date().toISOString(),
+                    "winner": playerID,
+                    "player1Score": currentPlayer.score,
+                    "player2Score": otherPlayer.score
+                }
+            };
+    
+            await Room.deleteOne({ roomID });
+    
+            // try {
+            //     await axios.post(url, dataToSend).then(async () => {
+            //         await Room.deleteOne({ roomID });
+            //     });
+    
+            // } catch (error) {
+            //     console.log('Error sending game result:', error);
+            // }
+        }
+        
     });
 
     socket.on("gameFinishedWithTie", async (data) => {
