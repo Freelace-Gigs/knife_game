@@ -123,6 +123,16 @@
     <div id="game_content"></div>
     <script>
       $(document).ready(function () {
+        function checkIfPageOpen(key, id) {
+          if (localStorage.getItem(key) && id === PLAYER_ID) {
+            alert("This page is already open in another tab.");
+            return false;
+          } else {
+            localStorage.setItem(key, true);
+            return true;
+          }
+        }
+
         function getQueryParams() {
           const params = new URLSearchParams(window.location.search);
           return {
@@ -134,10 +144,13 @@
             player2ID: params.get("player2Id"),
           };
         }
+
         const { emit, token, returnURL, matchId, playerID, player2ID } =
           getQueryParams();
         ROOM_ID = matchId;
         PLAYER_ID = playerID;
+        OTHER_PLAYER = player2ID;
+        const pageOpenKey = `knife-game-${PLAYER_ID}`;
 
         window.socket = io();
 
@@ -167,8 +180,11 @@
           } else if (data.inGame == playerID) {
             SHOW_GAMEPLAY = true;
             CAN_PLAY = false;
+            if (!checkIfPageOpen(pageOpenKey, pageOpenKey.replace("knife-game-", ""))) {
+              return;
+            }
             $("#waitingMessage").hide();
-            loadScripts(["scripts/menu.js", "scripts/game.js"]);
+            loadScripts(["scripts/menu.js", "scripts/gamespectate.js"]);
           }
         });
 
@@ -181,12 +197,30 @@
         });
 
         socket.on("bothGameEnd", (data) => {
+          console.log(data);
+          localStorage.removeItem(`knife-game-${PLAYER_ID}`);
+          localStorage.removeItem(`knife-game-${PLAYER_ID}temp`);
           CAN_PLAY = false;
-          if (!SHOW_GAMEPLAY) {
-            let currentPlayer;
-            let currentPlayerScore;
-            let otherPlayer;
-            let otherPlayerScore;
+          let currentPlayer;
+          let currentPlayerScore;
+          let otherPlayer;
+          let otherPlayerScore;
+          if (PLAYER_ID.includes("temp")) {
+            if (data.player1 === PLAYER_ID.slice(0, -4)) {
+              otherPlayerScore = data?.player1Score;
+              currentPlayerScore = data?.player2Score;
+            } else {
+              currentPlayerScore = data?.player1Score;
+              otherPlayerScore = data?.player2Score;
+            }
+            if (currentPlayerScore > otherPlayerScore) {
+              $("#gameEndWin").show();
+            } else if (currentPlayerScore == otherPlayerScore) {
+              $("#gameEndTie").show();
+            } else {
+              $("#gameEndLose").show();
+            }
+          } else {
             if (data.player1 === PLAYER_ID) {
               currentPlayerScore = data?.player1Score;
               otherPlayerScore = data?.player2Score;
@@ -196,15 +230,19 @@
             }
             if (currentPlayerScore > otherPlayerScore) {
               $("#gameEndWin").show();
-              socket.emit("gameFinished", {
-                roomID: ROOM_ID,
-                playerID: PLAYER_ID,
-              });
+              if (!SHOW_GAMEPLAY) {
+                socket.emit("gameFinished", {
+                  roomID: ROOM_ID,
+                  playerID: PLAYER_ID,
+                });
+              }
             } else if (currentPlayerScore == otherPlayerScore) {
               $("#gameEndTie").show();
-              socket.emit("gameFinishedWithTie", {
-                roomID: ROOM_ID,
-              });
+              if (!SHOW_GAMEPLAY) {
+                socket.emit("gameFinishedWithTie", {
+                  roomID: ROOM_ID,
+                });
+              }
             } else {
               $("#gameEndLose").show();
             }
@@ -242,6 +280,7 @@
             PLAYER_ID.slice(0, 3) === "a99"
           ) {
             CAN_PLAY = false;
+            START_EMITTING = true
             loadScripts(["scripts/gameai.js"]);
           } else {
             loadScripts(["scripts/game.js"]);
@@ -249,6 +288,7 @@
         });
       });
       window.addEventListener("beforeunload", (event) => {
+        localStorage.removeItem(`knife-game-${PLAYER_ID}`);
         socket.emit("playerDisconnectData");
       });
     </script>

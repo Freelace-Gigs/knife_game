@@ -101,7 +101,7 @@ io.on('connection', (socket) => {
                         socket.join(matchId);
                         if(player2ID){
                             if (player2ID.slice(0, 3) === "b99" || player2ID.slice(0, 3) === "a99") {
-                                call_bot(`${process.env.URL}/?token=${token}&returnURL=${returnURL}&matchId=${matchId}&player1Id=${player2ID}&player2Id=${playerID}`, 120000)
+                                call_bot(`${process.env.URL}/?token=${token}&returnURL=${returnURL}&matchId=${matchId}&player1Id=${player2ID}&player2Id=${playerID}`, 75000)
                             }
                         }
                         
@@ -243,21 +243,21 @@ io.on('connection', (socket) => {
 
     socket.on('throw', (data) => {
 
-        io.in(data.roomID).emit('throw');
+        io.in(data.roomID).emit('throw', data);
     });
+
+    
+    socket.on('emitTime', (data) => {
+        io.in(data.roomID).emit('emitTime', data);
+    });
+
 
     socket.on('emitGameEnd', (data) => {
 
-        io.in(data.roomID).emit('emitGameEnd');
-    });
-
-    socket.on('knifeCollision', (data) => {
-
-        io.in(data.roomID).emit('knifeCollision');
+        io.in(data.roomID).emit('emitGameEnd', data);
     });
 
     socket.on("gameFinished", async (data) => {
-
         const roomID = data.roomID;
         const playerID = data.playerID;
         const room = await Room.findOne({ roomID });
@@ -273,8 +273,8 @@ io.on('connection', (socket) => {
                     "event_type": "match_ended",
                     "datetime": new Date().toISOString(),
                     "winner": playerID,
-                    "player1Score": currentPlayer.score,
-                    "player2Score": otherPlayer.score
+                    "player1Score": currentPlayer?.score,
+                    "player2Score": otherPlayer?.score
                 }
             };
     

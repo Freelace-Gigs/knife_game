@@ -12,6 +12,7 @@ var BOT_PLAY = false
 var ignoreNextGlobalInput = false
 var CAN_BOT_PLAY = true
 var LINK = ""
+var OTHER_PLAYER = ""
 
 // loadData();
 // function loadData() {
