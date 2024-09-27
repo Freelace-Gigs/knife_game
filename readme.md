@@ -1,10 +1,18 @@
 # Getting Started
 
-Install all dependencies
+# Step 1
 
 ```bash
 npm i
 ```
+
+# Step 2
+
+```bash
+npx playwright install
+```
+
+# Step 3
 
 Run the server
 
