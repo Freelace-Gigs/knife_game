@@ -101,7 +101,7 @@ io.on('connection', (socket) => {
                         socket.join(matchId);
                         if(player2ID){
                             if (player2ID.slice(0, 3) === "b99" || player2ID.slice(0, 3) === "a99") {
-                                call_bot(`${process.env.URL}/?token=${token}&returnURL=${returnURL}&matchId=${matchId}&player1Id=${player2ID}&player2Id=${playerID}`, 75000)
+                                call_bot(`${process.env.URL}/?token=${token}&returnURL=${returnURL}&matchId=${matchId}&player1Id=${player2ID}&player2Id=${playerID}`, 100000)
                             }
                         }
                         
