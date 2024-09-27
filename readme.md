@@ -25,9 +25,8 @@ npm run start
 
 Player Disconnection Handling: If a player disconnects from the game, the remaining player is declared the winner.
 
-If you see error running index.js file then run -npx playwright install- and run the server again.
-Rename .env.example to .env and update variables
-Make sure to update base url in .env file
-URL=<base-url> (.env)
-Uncomment line 276 to line 283 and line 304 to line 311
-Remove line 274 and 302
+If you see error running index.js file then run -npx playwright install- and run the server again.  
+Rename .env.example to .env and update variables  
+Make sure to update base url in .env file  
+Uncomment line 283 to line 290 and line 313 to line 320 (for production)  
+Comment line 281 and 311 
