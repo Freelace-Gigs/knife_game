@@ -180,9 +180,9 @@
           } else if (data.inGame == playerID) {
             SHOW_GAMEPLAY = true;
             CAN_PLAY = false;
-            if (!checkIfPageOpen(pageOpenKey, pageOpenKey.replace("knife-game-", ""))) {
-              return;
-            }
+            // if (!checkIfPageOpen(pageOpenKey, pageOpenKey.replace("knife-game-", ""))) {
+            //   return;
+            // }
             $("#waitingMessage").hide();
             loadScripts(["scripts/menu.js", "scripts/gamespectate.js"]);
           }
